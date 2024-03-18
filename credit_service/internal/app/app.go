@@ -26,6 +26,12 @@ func RunRest(cfg *config.Config, logger *logrus.Logger) {
 	if err != nil {
 		logger.Fatalf("connect to mongo failed:%s", err)
 	}
+	defer func() {
+		if err = db.Client().Disconnect(context.Background()); err != nil {
+			logger.Fatalf("mongodb close failed:%s", err)
+		}
+		logger.Info("mongodb connection closed")
+	}()
 
 	storages := storage.NewStorage(db, cfg.MongoDb.CreditCollection)
 	services := service.NewService(logger, storages)
