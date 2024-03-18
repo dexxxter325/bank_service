@@ -7,6 +7,7 @@ import (
 	"bank/credit_service/internal/storage"
 	"bank/credit_service/pkg/mongo"
 	"context"
+	"errors"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/sirupsen/logrus"
@@ -26,7 +27,7 @@ func RunRest(cfg *config.Config, logger *logrus.Logger) {
 		logger.Fatalf("connect to mongo failed:%s", err)
 	}
 
-	storages := storage.NewStorage(db)
+	storages := storage.NewStorage(db, cfg.MongoDb.CreditCollection)
 	services := service.NewService(logger, storages)
 	handlers := rest.NewHandler(logger, services)
 
@@ -36,7 +37,8 @@ func RunRest(cfg *config.Config, logger *logrus.Logger) {
 	}
 
 	go func() {
-		if err = srv.ListenAndServe(); err != nil {
+		logger.Infof("rest started on port:%s", cfg.Rest.Port)
+		if err = srv.ListenAndServe(); err != nil && !errors.Is(http.ErrServerClosed, err) {
 			logger.Fatalf("run application failed:%s", err)
 		}
 	}()

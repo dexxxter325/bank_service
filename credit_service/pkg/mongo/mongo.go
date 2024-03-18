@@ -8,7 +8,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func ConnToMongoDB(cfg *config.Config) (*mongo.Client, error) {
+func ConnToMongoDB(cfg *config.Config) (*mongo.Database, error) {
 
 	uri := fmt.Sprintf("mongodb://%s:%s", cfg.MongoDb.Host, cfg.MongoDb.Port)
 
@@ -16,10 +16,9 @@ func ConnToMongoDB(cfg *config.Config) (*mongo.Client, error) {
 		Username: cfg.MongoDb.Username,
 		Password: cfg.MongoDb.Password,
 	}
-
 	client, err := mongo.Connect(context.Background(), options.Client().ApplyURI(uri).SetAuth(credentials))
 	if err != nil {
 		return nil, fmt.Errorf("mongo.Connect failed:%s", err)
 	}
-	return client, nil
+	return client.Database(cfg.MongoDb.Dbname), nil
 }

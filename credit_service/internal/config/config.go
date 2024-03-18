@@ -15,10 +15,12 @@ type Rest struct {
 }
 
 type MongoDb struct {
-	Host     string
-	Port     string
-	Username string
-	Password string
+	Host             string
+	Port             string
+	Dbname           string
+	CreditCollection string
+	Username         string
+	Password         string
 }
 
 func InitConfig() (*Config, error) {
@@ -35,10 +37,12 @@ func InitConfig() (*Config, error) {
 			Port: viper.GetString("rest.port"),
 		},
 		MongoDb: MongoDb{
-			Host:     viper.GetString("mongodb.host"),
-			Port:     viper.GetString("mongodb.port"),
-			Username: viper.GetString("mongodb.username"),
-			Password: viper.GetString("mongodb.password"),
+			Host:             viper.GetString("mongodb.host"),
+			Port:             viper.GetString("mongodb.port"),
+			Dbname:           viper.GetString("mongodb.dbname"),
+			CreditCollection: viper.GetString("mongodb.credit_collection"),
+			Username:         viper.GetString("mongodb.username"),
+			Password:         viper.GetString("mongodb.password"),
 		},
 	}
 	return &cfg, nil
