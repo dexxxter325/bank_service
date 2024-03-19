@@ -52,7 +52,7 @@ func (d *MongoDB) GetCredits(ctx context.Context) ([]models.Credit, error) {
 			return nil, fmt.Errorf("decode failed:%s", err)
 		}
 		if errors.Is(res.Err(), mongo.ErrNoDocuments) {
-			return []models.Credit{}, fmt.Errorf("no credits found with provided ID:%s", credit.ID)
+			return []models.Credit{}, fmt.Errorf("no credits found")
 		}
 
 		credits = append(credits, credit)

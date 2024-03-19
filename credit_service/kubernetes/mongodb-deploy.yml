@@ -1,0 +1,33 @@
+apiVersion: apps/v1 #версия кубера для деплоя и тд
+kind: Deployment #управляет созданием и обновлением подов(1 ли неск.контейнеров с общим запуском и хранилищем)
+metadata:
+  name: mongodb #имя общего кластера,в котором будут поды и контейнеры
+  labels:
+    name: mongodb
+spec:
+  replicas: 1 #наш сервер запускается в 1 кластере.В котором уже находятся поды с контейнерами.Поэтому если кластер падает=все рушится,нужна реплика для откзоустойчивости.
+  selector:
+    matchLabels: #конкретные лейблы, которые ресурс должен иметь, чтобы быть выбранным-в нашем случае под.
+      app: mongodb #метка ,по которой будут искаться поды с такой же меткой
+  template:
+    metadata:
+      labels:
+        app: mongodb #метка,на основе кот.этот под будет выбран
+    spec:
+      containers:
+        - name: mongodb
+          image: mongo:latest
+          ports:
+            - containerPort: 27017
+              name: mongodb
+          env:
+            - name: MONGO_INITDB_ROOT_USERNAME
+              valueFrom:
+                configMapKeyRef:
+                  name: mongodb-config
+                  key: MONGO_USERNAME
+            - name: MONGO_INITDB_ROOT_PASSWORD
+              valueFrom:
+                configMapKeyRef:
+                  name: mongodb-config
+                  key: MONGO_PASSWORD

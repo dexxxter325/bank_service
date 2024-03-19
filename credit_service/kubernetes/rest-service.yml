@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service #обеспечение доступа к приложению внутри/снаружи
+metadata:
+  name: credit-service #название сервиса
+  labels:
+    name: credit-service
+spec:
+  type: ClusterIP #сервис будет доступен на node-порту.Открывает порт на всех нодах(docker desktop)
+  ports:
+    - protocol: TCP
+      port: 8080 #доступ внутри
+      targetPort: 8080 #ссылается на под ,который уже слушает на этом порту
+      #nodePort: 30000 #доступ снаружи
+      name: credit-service
+
+  selector:
+    app: credit-service

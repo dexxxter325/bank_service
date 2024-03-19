@@ -5,7 +5,7 @@ import (
 	"bank/credit_service/internal/rest"
 	"bank/credit_service/internal/service"
 	"bank/credit_service/internal/storage"
-	"bank/credit_service/pkg/mongo"
+	"bank/credit_service/pkg/mongodb"
 	"context"
 	"errors"
 	"github.com/go-chi/chi"
@@ -22,7 +22,7 @@ func RunRest(cfg *config.Config, logger *logrus.Logger) {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 
-	db, err := mongo.ConnToMongoDB(cfg)
+	db, err := mongodb.ConnToMongoDB(cfg)
 	if err != nil {
 		logger.Fatalf("connect to mongo failed:%s", err)
 	}

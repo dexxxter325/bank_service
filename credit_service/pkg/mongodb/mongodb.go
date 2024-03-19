@@ -1,4 +1,4 @@
-package mongo
+package mongodb
 
 import (
 	"bank/credit_service/internal/config"
