@@ -3,7 +3,10 @@ package service
 import (
 	"bank/credit_service/internal/domain/models"
 	"context"
+	"errors"
+	"fmt"
 	"github.com/sirupsen/logrus"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type Service struct {
@@ -38,6 +41,9 @@ func (s *Service) GetCredits(ctx context.Context) ([]models.Credit, error) {
 	credits, err := s.storage.GetCredits(ctx)
 	if err != nil {
 		s.logger.Errorf("failed to get credits:%s", err)
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return []models.Credit{}, fmt.Errorf("no credits found")
+		}
 		return []models.Credit{}, err
 	}
 

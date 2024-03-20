@@ -51,15 +51,16 @@ func (d *MongoDB) GetCredits(ctx context.Context) ([]models.Credit, error) {
 		if err = res.Decode(&credit); err != nil { //из запроса переносим данные на структуру
 			return nil, fmt.Errorf("decode failed:%s", err)
 		}
-		if errors.Is(res.Err(), mongo.ErrNoDocuments) {
-			return []models.Credit{}, fmt.Errorf("no credits found")
-		}
 
 		credits = append(credits, credit)
 	}
 
 	if res.Err() != nil {
 		return nil, fmt.Errorf("failed to find credits:%s", err.Error())
+	}
+
+	if len(credits) == 0 {
+		return nil, fmt.Errorf("no credits found")
 	}
 
 	return credits, nil
@@ -110,7 +111,7 @@ func (d *MongoDB) UpdateCredit(ctx context.Context, credit models.Credit) (updat
 	res := d.collection.FindOneAndUpdate(ctx, query, update, options.FindOneAndUpdate().SetReturnDocument(options.After))
 
 	if errors.Is(res.Err(), mongo.ErrNoDocuments) {
-		return updatedCredit, fmt.Errorf("no credit found with provided ID")
+		return updatedCredit, fmt.Errorf("no credit found with provided ID:%s", credit.ID)
 	}
 	if res.Err() != nil {
 		return models.Credit{}, fmt.Errorf("failed to update credit:%s", err)
