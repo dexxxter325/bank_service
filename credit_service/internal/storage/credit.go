@@ -22,6 +22,10 @@ func NewStorage(DB *mongo.Database, collection string) *MongoDB {
 }
 
 func (d *MongoDB) CreateCredit(ctx context.Context, credit models.Credit) (models.Credit, error) {
+	if d.IsCreditExist(ctx, credit.Amount, credit.Term, credit.Currency, credit.AnnualInterestRate) {
+		return models.Credit{}, errors.New("you already took this credit")
+	}
+
 	res, err := d.collection.InsertOne(ctx, credit)
 	if err != nil {
 		return models.Credit{}, fmt.Errorf("insert one failed:%s", err)
@@ -145,4 +149,21 @@ func (d *MongoDB) DeleteCredit(ctx context.Context, id string) error {
 	}
 
 	return nil
+}
+
+func (d *MongoDB) IsCreditExist(ctx context.Context, amount, term int, currency string, annualInterestRate float64) bool {
+	query := bson.M{
+		"amount":             amount,
+		"term":               term,
+		"currency":           currency,
+		"annualInterestRate": annualInterestRate,
+	}
+
+	res := d.collection.FindOne(ctx, query)
+
+	if errors.Is(res.Err(), mongo.ErrNoDocuments) {
+		return false
+	}
+
+	return true
 }
