@@ -16,7 +16,7 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: credit-service
+                name: credit-service #перенаправляем запрос на service
                 port:
                   name: credit-service
 #path=localhost/...

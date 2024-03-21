@@ -8,7 +8,7 @@ import (
 )
 
 type Service interface {
-	CreateCredit(ctx context.Context, credit models.Credit) (string, error)
+	CreateCredit(ctx context.Context, credit models.Credit) (models.Credit, error)
 	GetCredits(ctx context.Context) ([]models.Credit, error)
 	GetCreditById(ctx context.Context, id string) (models.Credit, error)
 	UpdateCredit(ctx context.Context, credit models.Credit) (updatedCredit models.Credit, err error)

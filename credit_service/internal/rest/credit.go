@@ -34,14 +34,14 @@ func (h *Handler) CreateCredit() http.HandlerFunc {
 			return
 		}
 
-		objectId, err := h.service.CreateCredit(context.Background(), credit)
+		createdCredit, err := h.service.CreateCredit(context.Background(), credit)
 		if err != nil {
 			h.logger.Errorf("create credit failed:%s", err)
 			http.Error(w, fmt.Sprintf("create credit failed:%s", err), http.StatusInternalServerError)
 			return
 		}
 
-		response := map[string]string{"ObjectId": objectId}
+		response := map[string]models.Credit{"Created Credit": createdCredit}
 
 		render.JSON(w, r, response)
 	}

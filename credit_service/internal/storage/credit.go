@@ -21,18 +21,19 @@ func NewStorage(DB *mongo.Database, collection string) *MongoDB {
 	}
 }
 
-func (d *MongoDB) CreateCredit(ctx context.Context, credit models.Credit) (string, error) {
+func (d *MongoDB) CreateCredit(ctx context.Context, credit models.Credit) (models.Credit, error) {
 	res, err := d.collection.InsertOne(ctx, credit)
 	if err != nil {
-		return "", fmt.Errorf("insert one failed:%s", err)
+		return models.Credit{}, fmt.Errorf("insert one failed:%s", err)
 	}
 
 	objectID, ok := res.InsertedID.(primitive.ObjectID) //Inserted ID type interface convert to type ObjectID
 	if !ok {
-		return "", fmt.Errorf("failed to get ObjectID:%s", err)
+		return models.Credit{}, fmt.Errorf("failed to get ObjectID:%s", err)
 	}
+	credit.ID = objectID.Hex()
 
-	return objectID.Hex(), nil //convert type ObjectID to string
+	return credit, nil //convert type ObjectID to string
 }
 
 func (d *MongoDB) GetCredits(ctx context.Context) ([]models.Credit, error) {
@@ -100,11 +101,13 @@ func (d *MongoDB) UpdateCredit(ctx context.Context, credit models.Credit) (updat
 
 	update := bson.M{
 		"$set": bson.M{ //поля,которые нужно обновить
-			"amount":         credit.Amount,
-			"dateOfIssue":    credit.DateOfIssue,
-			"maturityDate":   credit.MaturityDate,
-			"term":           credit.Term,
-			"monthlyPayment": credit.MonthlyPayment,
+			"amount":             credit.Amount,
+			"currency":           credit.Currency,
+			"annualInterestRate": credit.AnnualInterestRate,
+			"term":               credit.Term,
+			"dateOfIssue":        credit.DateOfIssue,
+			"maturityDate":       credit.MaturityDate,
+			"monthlyPayment":     credit.MonthlyPayment,
 		},
 	}
 

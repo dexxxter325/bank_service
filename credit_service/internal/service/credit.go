@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/mongo"
+	"math"
+	"time"
 )
 
 type Service struct {
@@ -21,18 +23,20 @@ func NewService(logger *logrus.Logger, storage Storage) *Service {
 	}
 }
 
-func (s *Service) CreateCredit(ctx context.Context, credit models.Credit) (string, error) {
+func (s *Service) CreateCredit(ctx context.Context, credit models.Credit) (createdCredit models.Credit, err error) {
 	s.logger.Info("received create credit req")
 
-	id, err := s.storage.CreateCredit(ctx, credit)
+	credit.MonthlyPayment, credit.DateOfIssue, credit.MaturityDate = CalculateCreditParams(credit.Term, credit.Amount, credit.AnnualInterestRate)
+
+	createdCredit, err = s.storage.CreateCredit(ctx, credit)
 	if err != nil {
 		s.logger.Errorf("faield to create credit:%s", err)
-		return "", err
+		return models.Credit{}, err
 	}
 
 	s.logger.Info("credit created")
 
-	return id, nil
+	return createdCredit, nil
 }
 
 func (s *Service) GetCredits(ctx context.Context) ([]models.Credit, error) {
@@ -69,9 +73,11 @@ func (s *Service) GetCreditById(ctx context.Context, id string) (models.Credit, 
 func (s *Service) UpdateCredit(ctx context.Context, credit models.Credit) (updatedCredit models.Credit, err error) {
 	s.logger.Info("received update credit req")
 
+	credit.MonthlyPayment, credit.DateOfIssue, credit.MaturityDate = CalculateCreditParams(credit.Term, credit.Amount, credit.AnnualInterestRate)
+
 	updatedCredit, err = s.storage.UpdateCredit(ctx, credit)
 	if err != nil {
-		s.logger.Errorf("faield to update credit:%s", err)
+		s.logger.Errorf("failed to update credit:%s", err)
 		return models.Credit{}, err
 	}
 
@@ -91,4 +97,14 @@ func (s *Service) DeleteCredit(ctx context.Context, id string) error {
 	s.logger.Info("credit deleted")
 
 	return nil
+}
+
+func CalculateCreditParams(term, amount int, annualInterestRate float64) (monthlyPayment int, dateOfIssue, maturityDate string) {
+	monthlyInterestRate := annualInterestRate / 100 / 12 //месячная % ставка
+	numerator := monthlyInterestRate * float64(amount)
+	denominator := 1 - math.Pow(1+monthlyInterestRate, -float64(term))
+	monthlyPayment = int(numerator / denominator) //формула аннуитетного платежа
+	dateOfIssue = time.Now().Format("1 January 2024")
+	maturityDate = time.Now().AddDate(0, term, 0).Format("1 January 2024")
+	return monthlyPayment, dateOfIssue, maturityDate
 }
