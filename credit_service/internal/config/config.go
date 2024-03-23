@@ -24,9 +24,13 @@ type MongoDb struct {
 }
 
 func InitConfig() (*Config, error) {
+	return InitConfigByPath("config/local.yml")
+}
+
+func InitConfigByPath(configPath string) (*Config, error) {
 	var cfg Config
 
-	viper.SetConfigFile("config/local.yml")
+	viper.SetConfigFile(configPath)
 
 	if err := viper.ReadInConfig(); err != nil {
 		return nil, fmt.Errorf("read config failed:%s", err)

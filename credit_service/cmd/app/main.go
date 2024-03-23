@@ -16,5 +16,3 @@ func main() {
 	}
 	app.RunRest(cfg, logger)
 }
-
-//TODO:дописать middleware для одинаковой вставки!!!

@@ -1,0 +1,9 @@
+rest:
+  port: 0
+mongodb:
+  host: localhost
+  port: 0
+  dbname: mongo_test
+  credit_collection: test
+  username: test
+  password: test

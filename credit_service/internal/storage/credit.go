@@ -65,7 +65,7 @@ func (d *MongoDB) GetCredits(ctx context.Context) ([]models.Credit, error) {
 	}
 
 	if len(credits) == 0 {
-		return nil, fmt.Errorf("no credits found")
+		return nil, errors.New("no credits found")
 	}
 
 	return credits, nil
@@ -74,7 +74,7 @@ func (d *MongoDB) GetCredits(ctx context.Context) ([]models.Credit, error) {
 func (d *MongoDB) GetCreditById(ctx context.Context, id string) (credit models.Credit, err error) {
 	objectID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
-		return credit, fmt.Errorf("failed to conver string to ObjectID")
+		return credit, fmt.Errorf("failed to conver string to ObjectID:%s", err)
 	}
 
 	query := bson.M{"_id": objectID} //ObjectID используется в кач.значения поля _id
@@ -98,7 +98,7 @@ func (d *MongoDB) GetCreditById(ctx context.Context, id string) (credit models.C
 func (d *MongoDB) UpdateCredit(ctx context.Context, credit models.Credit) (updatedCredit models.Credit, err error) {
 	objectID, err := primitive.ObjectIDFromHex(credit.ID)
 	if err != nil {
-		return updatedCredit, fmt.Errorf("failed to conver string to ObjectID")
+		return updatedCredit, fmt.Errorf("failed to conver string to ObjectID:%s", err)
 	}
 
 	query := bson.M{"_id": objectID}
@@ -134,7 +134,7 @@ func (d *MongoDB) UpdateCredit(ctx context.Context, credit models.Credit) (updat
 func (d *MongoDB) DeleteCredit(ctx context.Context, id string) error {
 	ObjectID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
-		return fmt.Errorf("failed to conver string to ObjectID")
+		return fmt.Errorf("failed to conver string to ObjectID:%s", err)
 	}
 
 	query := bson.M{"_id": ObjectID}
