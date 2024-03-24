@@ -1,7 +1,7 @@
 package models
 
 type User struct {
-	ID       int
+	ID       int64
 	Username string
-	Password string
+	Password []byte //in db hashed pass
 }

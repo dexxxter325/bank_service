@@ -22,12 +22,12 @@ func RunGRPC(cfg *config.Config, logger *logrus.Logger) {
 	}
 	defer func() {
 		db.Close()
-		logrus.Info("postgres connection closed")
+		logger.Info("postgres connection closed")
 	}()
 
 	storages := storage.NewStorage(db)
-	services := service.NewService(storages, logger)
-	handlers := handler.NewAuthServer(services)
+	services := service.NewService(storages, logger, cfg)
+	handlers := handler.NewAuthServer(services, logger)
 
 	srv := grpc.NewServer()
 	gen.RegisterAuthServer(srv, handlers)
@@ -37,10 +37,12 @@ func RunGRPC(cfg *config.Config, logger *logrus.Logger) {
 		if err != nil {
 			logger.Fatalf("listen grpc failed:%s", err)
 		}
+		logger.Infof("gRPC started on port:%s", cfg.GRPC.Port)
 		if err := srv.Serve(listener); err != nil {
 			logger.Fatalf("failed to serve grpc:%s", err)
 		}
 	}()
+
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGTERM, syscall.SIGINT)
 

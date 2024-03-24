@@ -8,6 +8,7 @@ import (
 type Config struct {
 	GRPC     GRPC
 	Postgres Postgres
+	Auth     Auth
 }
 
 type GRPC struct {
@@ -23,8 +24,14 @@ type Postgres struct {
 	Sslmode  string
 }
 
+type Auth struct {
+	SecretKey       string
+	AccessTokenTTL  string
+	RefreshTokenTTL string
+}
+
 func InitConfig() (*Config, error) {
-	return InitConfigByPath("../config/local.yml")
+	return InitConfigByPath("config/local.yml")
 }
 
 func InitConfigByPath(configPath string) (*Config, error) {
@@ -47,6 +54,11 @@ func InitConfigByPath(configPath string) (*Config, error) {
 			DbName:   viper.GetString("postgres.dbName"),
 			Password: viper.GetString("postgres.password"),
 			Sslmode:  viper.GetString("postgres.sslmode"),
+		},
+		Auth: Auth{
+			SecretKey:       viper.GetString("auth.secretKey"),
+			AccessTokenTTL:  viper.GetString("auth.accessTokenTTl"),
+			RefreshTokenTTL: viper.GetString("auth.refreshTokenTTl"),
 		},
 	}
 

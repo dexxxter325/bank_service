@@ -9,7 +9,7 @@ import (
 
 func NewPostgres(cfg *config.Config) (*pgxpool.Pool, error) {
 	data := fmt.Sprintf("host=%s port=%v user=%s dbname=%s password=%s sslmode=%s",
-		cfg.Postgres.Host, cfg.Postgres.Port, cfg.Postgres.DbName, cfg.Postgres.Password, cfg.Postgres.Sslmode)
+		cfg.Postgres.Host, cfg.Postgres.Port, cfg.Postgres.User, cfg.Postgres.DbName, cfg.Postgres.Password, cfg.Postgres.Sslmode)
 
 	conn, err := pgxpool.New(context.Background(), data)
 	if err != nil {

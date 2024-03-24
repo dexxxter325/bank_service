@@ -1,7 +1,11 @@
 package storage
 
 import (
+	"bank/auth_service/internal/domain/models"
 	"context"
+	"errors"
+	"fmt"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -13,14 +17,46 @@ func NewStorage(db *pgxpool.Pool) *Postgres {
 	return &Postgres{db: db}
 }
 
-func (s *Postgres) Register(ctx context.Context, username, password string) (int64, error) {
-	panic("")
+//TODO:методы storage и interceptor!
+
+func (p *Postgres) SaveUser(ctx context.Context, username string, hashedPassword []byte) (userId int64, err error) {
+	query := "insert into users (username,password) values($1,$2) returning id"
+
+	row := p.db.QueryRow(ctx, query, username, hashedPassword)
+
+	if err = row.Scan(&userId); err != nil {
+		return 0, fmt.Errorf("failed to scan in saveUser:%s", err)
+	}
+
+	return userId, err
 }
 
-func (s *Postgres) Login(ctx context.Context, username, password string) (accessToken, refreshToken string, err error) {
-	panic("")
+func (p *Postgres) GetUserByUsername(ctx context.Context, username string) (user models.User, err error) {
+	query := "select * from users where username=$1"
+
+	row := p.db.QueryRow(ctx, query, username)
+
+	if err = row.Scan(&user.ID, &user.Username, &user.Password); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return models.User{}, fmt.Errorf("user not found with username:%s", username)
+		}
+		return models.User{}, fmt.Errorf("failed to scan in getUserByUsername:%s", err)
+	}
+
+	return user, nil
 }
 
-func (s *Postgres) RefreshToken(ctx context.Context, refreshToken string) (newAccessToken, newRefreshToken string, err error) {
-	panic("")
+func (p *Postgres) GetUserById(ctx context.Context, userId int64) (user models.User, err error) {
+	query := "select * from users where id=$1"
+
+	row := p.db.QueryRow(ctx, query, userId)
+
+	if err = row.Scan(&user.ID, &user.Username, &user.Password); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return models.User{}, fmt.Errorf("user not found with id:%v", userId)
+		}
+		return models.User{}, fmt.Errorf("failed to scan in getUserById:%s", err)
+	}
+
+	return user, nil
 }
