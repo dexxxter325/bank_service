@@ -31,7 +31,7 @@ func NewService(storage Storage, logger *logrus.Logger, cfg *config.Config) *Ser
 }
 
 func (s *Service) Register(ctx context.Context, username, password string) (int64, error) {
-	s.logger.Info("received registration request")
+	s.logger.Infof("received registration req: username=%s, password=%s", username, password)
 
 	hashPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost) //salt already inside.Cost-hash security lvl
 	if err != nil {
@@ -51,7 +51,7 @@ func (s *Service) Register(ctx context.Context, username, password string) (int6
 }
 
 func (s *Service) Login(ctx context.Context, username, password string) (accessToken, refreshToken string, err error) {
-	s.logger.Info("received login req")
+	s.logger.Infof("received login req: username=%s, password=%s", username, password)
 
 	user, err := s.storage.GetUserByUsername(ctx, username)
 	if err != nil {
@@ -92,7 +92,7 @@ func (s *Service) Login(ctx context.Context, username, password string) (accessT
 }
 
 func (s *Service) RefreshToken(ctx context.Context, refreshToken string) (newAccessToken, newRefreshToken string, err error) {
-	s.logger.Info("received refreshToken req")
+	s.logger.Infof("received refreshToken req: refreshToken=%s", refreshToken)
 
 	secretKey := s.cfg.Auth.SecretKey
 

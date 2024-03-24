@@ -1,0 +1,13 @@
+grpc:
+  port: 0
+postgres:
+  host: localhost
+  port: 0
+  user: test
+  dbName: test
+  password: test
+  sslmode: disable
+auth:
+  secretKey: test
+  accessTokenTTl: 1h
+  refreshTokenTTl: 1h
