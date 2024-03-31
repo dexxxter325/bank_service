@@ -8,6 +8,7 @@ import (
 type Config struct {
 	Rest    Rest
 	MongoDb MongoDb
+	Kafka   Kafka
 }
 
 type Rest struct {
@@ -19,8 +20,14 @@ type MongoDb struct {
 	Port             string
 	Dbname           string
 	CreditCollection string
+	UserIDCollection string
 	Username         string
 	Password         string
+}
+
+type Kafka struct {
+	Brokers string
+	Topic   string
 }
 
 func InitConfig() (*Config, error) {
@@ -45,8 +52,13 @@ func InitConfigByPath(configPath string) (*Config, error) {
 			Port:             viper.GetString("mongodb.port"),
 			Dbname:           viper.GetString("mongodb.dbname"),
 			CreditCollection: viper.GetString("mongodb.credit_collection"),
+			UserIDCollection: viper.GetString("mongodb.userid_collection"),
 			Username:         viper.GetString("mongodb.username"),
 			Password:         viper.GetString("mongodb.password"),
+		},
+		Kafka: Kafka{
+			Brokers: viper.GetString("kafka.brokers"),
+			Topic:   viper.GetString("kafka.topic"),
 		},
 	}
 	return &cfg, nil

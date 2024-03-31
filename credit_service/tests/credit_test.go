@@ -1,10 +1,13 @@
 package tests
 
 import (
+	"bank/credit_service/internal/kafka/consumer"
 	"bank/credit_service/tests/suite"
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/exp/rand"
 	"io"
@@ -15,6 +18,7 @@ import (
 
 type Request struct {
 	ID                 string
+	UserID             int64
 	Amount             int
 	Currency           string
 	Term               int
@@ -26,19 +30,28 @@ type CreditResponse struct {
 }
 
 type Response struct {
-	ID string `json:"ID"`
+	ID     string `json:"ID"`
+	UserID int64  `json:"UserID"`
 }
 
 func TestCredit_OK(t *testing.T) {
-	st, _, killContainer, closeTestDbConnection, restPort, err := suite.New(t)
+	st, ctx, killMongoDBContainer, closeTestDbConnection, killKafkaContainer, restPort, err := suite.New(t)
 	require.NoError(t, err)
 
 	defer func() {
-		killContainer()
+		killMongoDBContainer()
 		closeTestDbConnection()
+		killKafkaContainer()
+		logrus.Infof("Kafka container killed")
 	}()
 
+	userID := randomInt64()
+
+	err = consumer.NewUserIDCollection(ctx, st.Cfg, st.MongoClient, userID)
+	require.NoError(t, err)
+
 	createReqData := Request{
+		UserID:             userID,
 		Amount:             randomInt(),
 		Currency:           randomString(5),
 		Term:               randomInt(),
@@ -80,7 +93,7 @@ func TestCredit_OK(t *testing.T) {
 
 	defer getResp.Body.Close()
 
-	getByIdReq, err := http.NewRequest("GET", fmt.Sprintf("http://localhost:%s/credits/%s", restPort, response.CreatedCredit.ID), nil)
+	getByIdReq, err := http.NewRequest("GET", fmt.Sprintf("http://localhost:%s/credits/objectID/%s", restPort, response.CreatedCredit.ID), nil)
 	require.NoError(t, err)
 
 	getByIdResp, err := st.Client.Do(getByIdReq)
@@ -94,7 +107,22 @@ func TestCredit_OK(t *testing.T) {
 
 	defer getByIdResp.Body.Close()
 
+	getByUserIdReq, err := http.NewRequest("GET", fmt.Sprintf("http://localhost:%s/credits/userID/%v", restPort, response.CreatedCredit.UserID), nil)
+	require.NoError(t, err)
+
+	getByUserIdResp, err := st.Client.Do(getByUserIdReq)
+	require.NoError(t, err)
+
+	body, err = io.ReadAll(getByUserIdResp.Body)
+	require.NoError(t, err)
+	require.NotEmpty(t, body)
+
+	require.Equal(t, getByUserIdResp.StatusCode, http.StatusOK)
+
+	defer getByUserIdResp.Body.Close()
+
 	updateReqData := Request{
+		UserID:             userID,
 		Amount:             randomInt(),
 		Currency:           randomString(5),
 		Term:               randomInt(),
@@ -134,16 +162,18 @@ func TestCredit_OK(t *testing.T) {
 }
 
 func TestCreate_Fail(t *testing.T) {
-	st, _, killDB, closeDB, restPort, err := suite.New(t)
+	st, _, killDB, closeDB, killKafkaContainer, restPort, err := suite.New(t)
 	require.NoError(t, err)
 
 	defer func() {
 		killDB()
 		closeDB()
+		killKafkaContainer()
 	}()
 
 	tests := []struct {
 		name               string
+		userID             int64
 		amount             int
 		currency           string
 		term               int
@@ -153,11 +183,22 @@ func TestCreate_Fail(t *testing.T) {
 	}{
 		{
 			name:               "empty fields",
-			expectedErr:        "you must fill the 'amount' value",
+			expectedErr:        "you must fill the 'userID' value",
+			expectedStatusCode: http.StatusBadRequest,
+		},
+		{
+			name:               "empty userID",
+			userID:             0,
+			amount:             0,
+			currency:           randomString(5),
+			term:               randomInt(),
+			annualInterestRate: randomFloat64(),
+			expectedErr:        "you must fill the 'userID' value",
 			expectedStatusCode: http.StatusBadRequest,
 		},
 		{
 			name:               "empty amount",
+			userID:             randomInt64(),
 			amount:             0,
 			currency:           randomString(5),
 			term:               randomInt(),
@@ -167,6 +208,7 @@ func TestCreate_Fail(t *testing.T) {
 		},
 		{
 			name:               "empty currency",
+			userID:             randomInt64(),
 			amount:             randomInt(),
 			currency:           "",
 			term:               randomInt(),
@@ -176,6 +218,7 @@ func TestCreate_Fail(t *testing.T) {
 		},
 		{
 			name:               "empty term",
+			userID:             randomInt64(),
 			amount:             randomInt(),
 			currency:           randomString(5),
 			term:               0,
@@ -185,6 +228,7 @@ func TestCreate_Fail(t *testing.T) {
 		},
 		{
 			name:               "empty annualInterestRate",
+			userID:             randomInt64(),
 			amount:             randomInt(),
 			currency:           randomString(5),
 			term:               randomInt(),
@@ -196,6 +240,7 @@ func TestCreate_Fail(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			createReqData := Request{
+				UserID:             tt.userID,
 				Amount:             tt.amount,
 				Currency:           tt.currency,
 				Term:               tt.term,
@@ -221,12 +266,13 @@ func TestCreate_Fail(t *testing.T) {
 }
 
 func TestGetAll_Fail(t *testing.T) {
-	st, _, killDB, closeDB, restPort, err := suite.New(t)
+	st, _, killDB, closeDB, killKafkaContainer, restPort, err := suite.New(t)
 	require.NoError(t, err)
 
 	defer func() {
 		killDB()
 		closeDB()
+		killKafkaContainer()
 	}()
 
 	tests := []struct {
@@ -260,12 +306,13 @@ func TestGetAll_Fail(t *testing.T) {
 }
 
 func TestGetById_Fail(t *testing.T) {
-	st, _, killDB, closeDB, restPort, err := suite.New(t)
+	st, _, killDB, closeDB, killKafkaContainer, restPort, err := suite.New(t)
 	require.NoError(t, err)
 
 	defer func() {
 		killDB()
 		closeDB()
+		killKafkaContainer()
 	}()
 
 	tests := []struct {
@@ -281,7 +328,47 @@ func TestGetById_Fail(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			getByIdReq, err := http.NewRequest("GET", fmt.Sprintf("http://localhost:%s/credits/%v", restPort, randomHex()), nil)
+			getByIdReq, err := http.NewRequest("GET", fmt.Sprintf("http://localhost:%s/credits/objectID/%v", restPort, randomHex()), nil)
+			require.NoError(t, err)
+
+			getByIdResp, err := st.Client.Do(getByIdReq)
+			require.NoError(t, err)
+
+			body, err := io.ReadAll(getByIdResp.Body)
+			require.NoError(t, err)
+			require.Contains(t, string(body), tt.expectedError)
+
+			require.Equal(t, getByIdResp.StatusCode, tt.expectedStatusCode)
+
+			defer getByIdResp.Body.Close()
+		})
+	}
+}
+
+func TestGetByUserId_Fail(t *testing.T) {
+	st, _, killDB, closeDB, killKafkaContainer, restPort, err := suite.New(t)
+	require.NoError(t, err)
+
+	defer func() {
+		killDB()
+		closeDB()
+		killKafkaContainer()
+	}()
+
+	tests := []struct {
+		name               string
+		expectedStatusCode int
+		expectedError      string
+	}{
+		{
+			name:               "no credits found for provided userID",
+			expectedStatusCode: http.StatusNotFound,
+			expectedError:      "no credits found for provided userID",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			getByIdReq, err := http.NewRequest("GET", fmt.Sprintf("http://localhost:%s/credits/userID/%v", restPort, randomInt64()), nil)
 			require.NoError(t, err)
 
 			getByIdResp, err := st.Client.Do(getByIdReq)
@@ -299,12 +386,13 @@ func TestGetById_Fail(t *testing.T) {
 }
 
 func TestUpdate_Fail(t *testing.T) {
-	st, _, killDB, closeDB, restPort, err := suite.New(t)
+	st, _, killDB, closeDB, killKafkaContainer, restPort, err := suite.New(t)
 	require.NoError(t, err)
 
 	defer func() {
 		killDB()
 		closeDB()
+		killKafkaContainer()
 	}()
 
 	tests := []struct {
@@ -392,12 +480,13 @@ func TestUpdate_Fail(t *testing.T) {
 }
 
 func TestDelete_Fail(t *testing.T) {
-	st, _, killDB, closeDB, restPort, err := suite.New(t)
+	st, _, killDB, closeDB, killKafkaContainer, restPort, err := suite.New(t)
 	require.NoError(t, err)
 
 	defer func() {
 		killDB()
 		closeDB()
+		killKafkaContainer()
 	}()
 
 	tests := []struct {
@@ -447,6 +536,11 @@ func randomInt() int {
 	return x
 }
 
+func randomInt64() int64 {
+	rand.Seed(uint64(time.Now().UnixNano()))
+	return rand.Int63n(9223372036854775807) //max int in MongoDB
+}
+
 func randomFloat64() float64 {
 	rand.Seed(uint64(time.Now().UnixNano()))
 	return rand.Float64() * 100 // Генерируем случайное число с плавающей запятой в диапазоне от 0 до 100
@@ -466,7 +560,13 @@ func randomHex() string {
 }
 
 func getIdForReq(st *suite.Suite, t *testing.T, restPort string) (CreditResponse, func() error) {
+	userID := randomInt64()
+
+	err := consumer.NewUserIDCollection(context.Background(), st.Cfg, st.MongoClient, userID)
+	require.NoError(t, err)
+
 	createReqData := Request{
+		UserID:             userID,
 		Amount:             randomInt(),
 		Currency:           randomString(5),
 		Term:               randomInt(),

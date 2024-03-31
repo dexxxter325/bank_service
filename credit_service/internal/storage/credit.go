@@ -2,6 +2,7 @@ package storage
 
 import (
 	"bank/credit_service/internal/domain/models"
+	"bank/credit_service/internal/kafka/consumer"
 	"context"
 	"errors"
 	"fmt"
@@ -12,21 +13,27 @@ import (
 )
 
 type MongoDB struct {
-	collection *mongo.Collection
+	creditCollection *mongo.Collection
+	userIDCollection *mongo.Collection
 }
 
-func NewStorage(DB *mongo.Database, collection string) *MongoDB {
+func NewStorage(DB *mongo.Database, creditCollection, userIDCollection string) *MongoDB {
 	return &MongoDB{
-		collection: DB.Collection(collection),
+		creditCollection: DB.Collection(creditCollection),
+		userIDCollection: DB.Collection(userIDCollection),
 	}
 }
 
 func (d *MongoDB) CreateCredit(ctx context.Context, credit models.Credit) (models.Credit, error) {
-	if d.IsCreditExist(ctx, credit.Amount, credit.Term, credit.Currency, credit.AnnualInterestRate) {
+	if d.IsCreditExist(ctx, credit.UserID, credit.Amount, credit.Term, credit.Currency, credit.AnnualInterestRate) {
 		return models.Credit{}, errors.New("you already took this credit")
 	}
 
-	res, err := d.collection.InsertOne(ctx, credit)
+	if consumer.IsUserIdNOTExist(ctx, credit.UserID, d.userIDCollection) {
+		return models.Credit{}, fmt.Errorf("provided userID:%v doesn't exist", credit.UserID)
+	}
+
+	res, err := d.creditCollection.InsertOne(ctx, credit)
 	if err != nil {
 		return models.Credit{}, fmt.Errorf("insert one failed:%s", err)
 	}
@@ -38,11 +45,12 @@ func (d *MongoDB) CreateCredit(ctx context.Context, credit models.Credit) (model
 	credit.ID = objectID.Hex()
 
 	return credit, nil //convert type ObjectID to string
+
 }
 
 func (d *MongoDB) GetCredits(ctx context.Context) ([]models.Credit, error) {
 	//получаем все доки в коллекции.
-	res, err := d.collection.Find(ctx, bson.M{}) //в bson.M{} хранятся поля,которые мы хотим получить из коллекции
+	res, err := d.creditCollection.Find(ctx, bson.M{}) //в bson.M{} хранятся поля,которые мы хотим получить из коллекции
 	if err != nil {
 		return []models.Credit{}, fmt.Errorf("find failed:%s", err)
 	}
@@ -79,7 +87,7 @@ func (d *MongoDB) GetCreditById(ctx context.Context, id string) (credit models.C
 
 	query := bson.M{"_id": objectID} //ObjectID используется в кач.значения поля _id
 
-	res := d.collection.FindOne(ctx, query)
+	res := d.creditCollection.FindOne(ctx, query)
 
 	if errors.Is(res.Err(), mongo.ErrNoDocuments) {
 		return credit, fmt.Errorf("no credit found with provided ID:%s", id)
@@ -93,6 +101,39 @@ func (d *MongoDB) GetCreditById(ctx context.Context, id string) (credit models.C
 	}
 
 	return credit, nil
+}
+
+func (d *MongoDB) GetCreditsByUserId(ctx context.Context, userID int64) ([]models.Credit, error) {
+	query := bson.M{"userID": userID}
+
+	res, err := d.creditCollection.Find(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find credit by userID:%s", err.Error())
+	}
+
+	defer res.Close(ctx)
+
+	var credits []models.Credit
+
+	for res.Next(ctx) { //перемещаемся к след.результату в ответе
+		var credit models.Credit
+
+		if err = res.Decode(&credit); err != nil { //из запроса переносим данные на структуру
+			return nil, fmt.Errorf("decode failed:%s", err)
+		}
+
+		credits = append(credits, credit)
+	}
+
+	if res.Err() != nil {
+		return nil, fmt.Errorf("failed to find credits by userID:%s", err.Error())
+	}
+
+	if len(credits) == 0 {
+		return nil, errors.New("no credits found for provided userID")
+	}
+
+	return credits, nil
 }
 
 func (d *MongoDB) UpdateCredit(ctx context.Context, credit models.Credit) (updatedCredit models.Credit, err error) {
@@ -115,7 +156,7 @@ func (d *MongoDB) UpdateCredit(ctx context.Context, credit models.Credit) (updat
 		},
 	}
 
-	res := d.collection.FindOneAndUpdate(ctx, query, update, options.FindOneAndUpdate().SetReturnDocument(options.After))
+	res := d.creditCollection.FindOneAndUpdate(ctx, query, update, options.FindOneAndUpdate().SetReturnDocument(options.After))
 
 	if errors.Is(res.Err(), mongo.ErrNoDocuments) {
 		return updatedCredit, fmt.Errorf("no credit found with provided ID:%s", credit.ID)
@@ -139,7 +180,7 @@ func (d *MongoDB) DeleteCredit(ctx context.Context, id string) error {
 
 	query := bson.M{"_id": ObjectID}
 
-	res, err := d.collection.DeleteOne(ctx, query)
+	res, err := d.creditCollection.DeleteOne(ctx, query)
 	if err != nil {
 		return fmt.Errorf("failed to delete credit:%s", err)
 	}
@@ -151,15 +192,16 @@ func (d *MongoDB) DeleteCredit(ctx context.Context, id string) error {
 	return nil
 }
 
-func (d *MongoDB) IsCreditExist(ctx context.Context, amount, term int, currency string, annualInterestRate float64) bool {
+func (d *MongoDB) IsCreditExist(ctx context.Context, userID int64, amount, term int, currency string, annualInterestRate float64) bool {
 	query := bson.M{
+		"userID":             userID,
 		"amount":             amount,
 		"term":               term,
 		"currency":           currency,
 		"annualInterestRate": annualInterestRate,
 	}
 
-	res := d.collection.FindOne(ctx, query)
+	res := d.creditCollection.FindOne(ctx, query)
 
 	if errors.Is(res.Err(), mongo.ErrNoDocuments) {
 		return false

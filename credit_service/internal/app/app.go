@@ -2,6 +2,7 @@ package app
 
 import (
 	"bank/credit_service/internal/config"
+	"bank/credit_service/internal/kafka/consumer"
 	"bank/credit_service/internal/rest"
 	"bank/credit_service/internal/service"
 	"bank/credit_service/internal/storage"
@@ -26,6 +27,7 @@ func RunRest(cfg *config.Config, logger *logrus.Logger) {
 	if err != nil {
 		logger.Fatalf("connect to mongo failed:%s", err)
 	}
+
 	defer func() {
 		if err = db.Client().Disconnect(context.Background()); err != nil {
 			logger.Fatalf("mongodb close failed:%s", err)
@@ -33,7 +35,7 @@ func RunRest(cfg *config.Config, logger *logrus.Logger) {
 		logger.Info("mongodb connection closed")
 	}()
 
-	storages := storage.NewStorage(db, cfg.MongoDb.CreditCollection)
+	storages := storage.NewStorage(db, cfg.MongoDb.CreditCollection, cfg.MongoDb.UserIDCollection)
 	services := service.NewService(logger, storages)
 	handlers := rest.NewHandler(logger, services)
 
@@ -42,20 +44,29 @@ func RunRest(cfg *config.Config, logger *logrus.Logger) {
 		Handler: handlers.InitRoutes(r),
 	}
 
+	stop := make(chan os.Signal)
+	signal.Notify(stop, syscall.SIGTERM, syscall.SIGINT)
+
 	go func() {
-		logger.Infof("rest started on port:%s", cfg.Rest.Port)
+		logger.Infof("kafka consumer starting:%s", cfg.Kafka.Brokers)
+		if err = consumer.KafkaConsumer(context.Background(), cfg, logger, db.Client(), stop); err != nil {
+			logger.Fatalf("failed to start kafka consumer:%s", err)
+		}
+	}()
+
+	go func() {
+		logger.Infof("rest starting on port:%s", cfg.Rest.Port)
 		if err = srv.ListenAndServe(); err != nil && !errors.Is(http.ErrServerClosed, err) {
 			logger.Fatalf("run application failed:%s", err)
 		}
 	}()
 
-	quit := make(chan os.Signal)
-	signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT)
-	<-quit
+	<-stop
 
 	if err = srv.Shutdown(context.Background()); err != nil {
 		logger.Fatalf("shutdown rest failed:%s", err)
 	}
 
+	logger.Info("kafka consumer stopped")
 	logger.Info("rest server stopped")
 }

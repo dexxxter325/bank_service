@@ -2,6 +2,7 @@ package models
 
 type Credit struct {
 	ID                 string  `bson:"_id,omitempty"`
+	UserID             int64   `bson:"userID"`
 	Amount             int     `bson:"amount"`
 	Currency           string  `bson:"currency"`
 	AnnualInterestRate float64 `bson:"annualInterestRate"` //годовая % ставка

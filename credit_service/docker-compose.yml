@@ -1,0 +1,26 @@
+version: '3.8'
+
+networks: #connect to external network-to use kafka
+  bank_service:
+    external: true
+
+services:
+  credit_service:
+    networks:
+      - bank_service
+    build: ./
+    ports:
+      - "8080:8080"
+    depends_on:
+    - mongo
+
+  mongo:
+    networks:
+      - bank_service
+    image: mongo:latest
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
+    ports:
+      - "27019:27017"
+

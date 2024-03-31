@@ -5,25 +5,27 @@ import (
 	"bank/credit_service/internal/config"
 	"context"
 	"fmt"
-	"github.com/ory/dockertest/v3"
-	"github.com/ory/dockertest/v3/docker"
 	"github.com/sirupsen/logrus"
+	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/modules/kafka"
+	"github.com/testcontainers/testcontainers-go/modules/mongodb"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"net"
 	"net/http"
-	"sync"
+	"strings"
 	"testing"
 	"time"
 )
 
 type Suite struct {
-	Cfg    *config.Config
-	t      *testing.T
-	Client *http.Client
+	Cfg         *config.Config
+	t           *testing.T
+	Client      *http.Client
+	MongoClient *mongo.Client
 }
 
-func New(t *testing.T) (st *Suite, ctx context.Context, killContainer func(), closeTestDbConnection func(), port string, err error) {
+func New(t *testing.T) (st *Suite, ctx context.Context, killMongoDBContainer, closeTestDbConnection, killKafkaContainer func(), port string, err error) {
 	t.Helper()
 	t.Parallel()
 
@@ -34,109 +36,133 @@ func New(t *testing.T) (st *Suite, ctx context.Context, killContainer func(), cl
 	cfg, err := config.InitConfigByPath("../config/config_tests.yml")
 	if err != nil {
 		logger.Fatalf("init config failed:%s", err)
-		return nil, nil, nil, nil, "", err
+		return nil, nil, nil, nil, nil, "", err
 	}
 
 	cfg.Rest.Port, err = findFreePort()
 	if err != nil {
 		logger.Fatalf("failed to find free port:%s", err)
-		return nil, nil, nil, nil, "", err
+		return nil, nil, nil, nil, nil, "", err
 	}
 
-	killContainer, closeTestDbConnection, err = ConnToTestMongoDB(logger, cfg, ctx)
+	killMongoDBContainer, closeTestDbConnection, mongoClient, err := ConnToTestMongoDB(cfg, context.Background(), t)
 	if err != nil {
 		logger.Fatalf("failed to create test MongoDb:%v", err)
-		return nil, nil, nil, nil, "", err
+		return nil, nil, nil, nil, nil, "", err
 	}
+
+	killKafkaContainer = NewTestKafka(context.Background(), cfg, t)
 
 	go func() {
 		app.RunRest(cfg, logger)
 	}()
+
 	time.Sleep(time.Second * 1) //for stop
 
 	client := &http.Client{}
 	st = &Suite{
-		Cfg:    cfg,
-		t:      t,
-		Client: client,
+		Cfg:         cfg,
+		t:           t,
+		Client:      client,
+		MongoClient: mongoClient,
 	}
-	return st, ctx, killContainer, closeTestDbConnection, cfg.Rest.Port, err
+
+	return st, ctx, killMongoDBContainer, closeTestDbConnection, killKafkaContainer, cfg.Rest.Port, err
 }
 
-var mu = &sync.Mutex{}
+func ConnToTestMongoDB(cfg *config.Config, ctx context.Context, t *testing.T) (func(), func(), *mongo.Client, error) {
+	mongoContainer, err := mongodb.RunContainer(ctx,
+		testcontainers.WithImage("mongo:6"),
+		mongodb.WithUsername(cfg.MongoDb.Username),
+		mongodb.WithPassword(cfg.MongoDb.Password),
+	)
+	if err != nil {
+		t.Fatalf("failed to start container in testmongo: %s", err)
+	}
 
-func ConnToTestMongoDB(log *logrus.Logger, cfg *config.Config, ctx context.Context) (func(), func(), error) {
-	var dbClient *mongo.Client
+	mongoPort, err := mongoContainer.MappedPort(ctx, "27017")
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to get mapped port for MongoDB container: %v", err)
+	}
+
+	cfg.MongoDb.Port = strings.TrimSuffix(string(mongoPort), "/tcp")
+
+	mongoURI := fmt.Sprintf("mongodb://%s:%s", cfg.MongoDb.Host, cfg.MongoDb.Port)
+
+	credentials := options.Credential{
+		Username: cfg.MongoDb.Username,
+		Password: cfg.MongoDb.Password,
+	}
+
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongoURI).SetAuth(credentials))
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to create TestMongoDB client: %v", err)
+	}
+
+	killMongoDBContainer := func() {
+		if err = mongoContainer.Terminate(ctx); err != nil {
+			t.Fatalf("failed to terminate container: %s", err)
+		}
+	}
+
+	closeTestDbConnection := func() {
+		if err = client.Disconnect(ctx); err != nil {
+			t.Fatalf("failed to close test MongoDB:%s", err)
+		}
+	}
+	return killMongoDBContainer, closeTestDbConnection, client, nil
+}
+
+func NewTestKafka(ctx context.Context, cfg *config.Config, t *testing.T) func() {
+	/*var mu = &sync.Mutex{}
 	mu.Lock()
-	pool, err := dockertest.NewPool("")
-	if err != nil {
-		log.Fatalf("Could not construct pool: %s", err)
-		return nil, nil, err
-	}
-	mu.Unlock()
-	err = pool.Client.Ping()
-	if err != nil {
-		log.Fatalf("Could not connect to Docker: %s", err)
-		return nil, nil, err
-	}
-	// pull mongodb docker image for version 5.0
-	resource, err := pool.RunWithOptions(&dockertest.RunOptions{
-		Repository: "mongo",
-		Tag:        "5.0",
-		Env: []string{
-			// username and password for mongodb superuser
-			fmt.Sprintf("MONGO_INITDB_ROOT_USERNAME=%s", cfg.MongoDb.Username),
-			fmt.Sprintf("MONGO_INITDB_ROOT_PASSWORD=%s", cfg.MongoDb.Password),
-		},
-	}, func(config *docker.HostConfig) {
-		// set AutoRemove to true so that stopped container goes away by itself
-		config.AutoRemove = true
-		config.RestartPolicy = docker.RestartPolicy{
-			Name: "no",
-		}
-	})
-	if err != nil {
-		log.Fatalf("Could not start resource: %s", err)
-		return nil, nil, err
-	}
+	defer mu.Unlock()*/
 
-	cfg.MongoDb.Port = resource.GetPort("27017/tcp")
+	var kafkaContainer *kafka.KafkaContainer
+	var err error
 
-	// exponential backoff-retry, because the application in the container might not be ready to accept connections yet
-	err = pool.Retry(func() error {
-		var err error
-		dbClient, err = mongo.Connect(
-			context.TODO(),
-			options.Client().ApplyURI(
-				fmt.Sprintf("mongodb://%s:%s@%s:%s", cfg.MongoDb.Username, cfg.MongoDb.Password, cfg.MongoDb.Host, resource.GetPort("27017/tcp")),
-			),
+	//due to the heavy load under the tests, the wrong port may be taken
+	for {
+		kafkaContainer, err = kafka.RunContainer(ctx,
+			kafka.WithClusterID("test"),
+			testcontainers.WithImage("confluentinc/confluent-local:7.5.0"),
 		)
-		if err != nil {
-			return err
+		if err == nil {
+			break
 		}
-		return dbClient.Ping(ctx, nil)
-	})
+		if err = kafkaContainer.Terminate(ctx); err != nil {
+			t.Errorf("err in terminate testKafkaContainer:%s", err)
+		}
 
+		t.Errorf("failed to start container in test kafka: %s", err)
+	}
+
+	kafkaHost, err := kafkaContainer.Host(ctx)
 	if err != nil {
-		log.Fatalf("Could not connect to docker: %s", err)
-		return nil, nil, err
+		t.Fatalf("failed to get Kafka container IP: %v", err)
 	}
-	killContainer := func() {
-		// When you're done, kill and remove the container
-		if err = pool.Purge(resource); err != nil {
-			log.Fatalf("Could not purge resource: %s", err)
-			return
-		}
+
+	kafkaPort, err := kafkaContainer.MappedPort(ctx, "9093")
+	if err != nil {
+		t.Fatalf("failed to get Kafka container port: %v", err)
 	}
-	// disconnect mongodb client
-	dbDisconnect := func() {
-		if err = dbClient.Disconnect(context.TODO()); err != nil {
-			log.Fatalf("failed to close test mongoDB connect:%s", err)
+
+	kafkaPortStr := string(kafkaPort)
+
+	parts := strings.Split(kafkaPortStr, "/")
+
+	logrus.Infof("PORT:%s", parts[0])
+
+	cfg.Kafka.Brokers = fmt.Sprintf("%s:%s", kafkaHost, parts[0])
+
+	killKafkaContainer := func() {
+		if err = kafkaContainer.Terminate(ctx); err != nil {
+			t.Fatalf("failed to terminate kafka container: %s", err)
 			return
 		}
 	}
 
-	return killContainer, dbDisconnect, nil
+	return killKafkaContainer
 }
 
 func findFreePort() (string, error) {
@@ -145,9 +171,11 @@ func findFreePort() (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	defer listener.Close()
 
 	address := listener.Addr().String()
+
 	_, port, err := net.SplitHostPort(address)
 	if err != nil {
 		return "", err

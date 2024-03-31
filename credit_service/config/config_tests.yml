@@ -1,9 +1,15 @@
 rest:
   port: 0
+
 mongodb:
   host: localhost
   port: 0
   dbname: mongo_test
   credit_collection: test
+  userid_collection: test
   username: test
   password: test
+
+kafka:
+  brokers: localhost:0
+  topic: test

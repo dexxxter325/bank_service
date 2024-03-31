@@ -64,6 +64,20 @@ func (s *Service) GetCreditById(ctx context.Context, id string) (models.Credit, 
 	return credit, err
 }
 
+func (s *Service) GetCreditsByUserId(ctx context.Context, userID int64) ([]models.Credit, error) {
+	s.logger.Info("received get credit by userId req")
+
+	credit, err := s.storage.GetCreditsByUserId(ctx, userID)
+	if err != nil {
+		s.logger.Errorf("failed to get credit by userId:%s", err)
+		return nil, err
+	}
+
+	s.logger.Info("credit by userId got")
+
+	return credit, err
+}
+
 func (s *Service) UpdateCredit(ctx context.Context, credit models.Credit) (updatedCredit models.Credit, err error) {
 	s.logger.Info("received update credit req")
 

@@ -10,6 +10,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 )
 
@@ -34,7 +35,7 @@ func (h *Handler) CreateCredit() http.HandlerFunc {
 			return
 		}
 
-		if err := h.AreValuesFilled(credit.Amount, credit.Term, credit.Currency, credit.AnnualInterestRate); err != nil {
+		if err := h.AreValuesFilled(credit.UserID, credit.Amount, credit.Term, credit.Currency, credit.AnnualInterestRate, "create"); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
@@ -92,6 +93,36 @@ func (h *Handler) GetCreditById() http.HandlerFunc {
 	}
 }
 
+func (h *Handler) GetCreditsByUserId() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		userIdStr := chi.URLParam(r, "id") //получаем id из url req
+
+		userId, err := strconv.Atoi(userIdStr)
+		if err != nil {
+			h.logger.Errorf("convert userId to int failed:%s", err)
+			http.Error(w, fmt.Sprintf("convert userId to int failed:%s", err), http.StatusInternalServerError)
+			return
+		}
+
+		userIdInt64 := int64(userId)
+
+		credits, err := h.service.GetCreditsByUserId(context.Background(), userIdInt64)
+		if err != nil {
+			if strings.Contains(err.Error(), "no credits found for provided userID") {
+				h.logger.Errorf("no credits found for provided userID: %v", userIdInt64)
+				http.Error(w, fmt.Sprintf("no credits found for provided userID: %v", userIdInt64), http.StatusNotFound)
+				return
+			}
+			h.logger.Errorf("get credit by userId failed:%s", err)
+			http.Error(w, fmt.Sprintf("get credit by userId failed:%s", err), http.StatusInternalServerError)
+			return
+		}
+
+		render.JSON(w, r, credits)
+	}
+}
+
 func (h *Handler) UpdateCredit() http.HandlerFunc { //return credit
 	return func(w http.ResponseWriter, r *http.Request) {
 
@@ -101,7 +132,7 @@ func (h *Handler) UpdateCredit() http.HandlerFunc { //return credit
 			return
 		}
 
-		if err := h.AreValuesFilled(credit.Amount, credit.Term, credit.Currency, credit.AnnualInterestRate); err != nil {
+		if err := h.AreValuesFilled(credit.UserID, credit.Amount, credit.Term, credit.Currency, credit.AnnualInterestRate, "update"); err != nil {
 			h.logger.Error(err)
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
@@ -161,7 +192,14 @@ func (h *Handler) decodeJSONFromBody(w http.ResponseWriter, r *http.Request, dat
 	return nil
 }
 
-func (h *Handler) AreValuesFilled(amount, term int, currency string, annualInterestRate float64) error {
+func (h *Handler) AreValuesFilled(userID int64, amount, term int, currency string, annualInterestRate float64, operationType string) error {
+	if operationType == "create" {
+		if userID == 0 {
+			h.logger.Error("you must fill the 'userID' value")
+			return errors.New("you must fill the 'userID' value")
+		}
+	}
+
 	if amount == 0 {
 		h.logger.Error("you must fill the 'amount' value")
 		return errors.New("you must fill the 'amount' value")
