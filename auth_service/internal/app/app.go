@@ -4,6 +4,7 @@ import (
 	"bank/auth_service/gen"
 	"bank/auth_service/internal/config"
 	"bank/auth_service/internal/handler"
+	"bank/auth_service/internal/kafka/producer"
 	"bank/auth_service/internal/service"
 	"bank/auth_service/internal/storage"
 	"bank/auth_service/pkg/postgres"
@@ -33,11 +34,18 @@ func RunGRPC(cfg *config.Config, logger *logrus.Logger) {
 	gen.RegisterAuthServer(srv, handlers)
 
 	go func() {
+		logger.Infof("kafka producer starting:%s", cfg.Kafka.Brokers)
+		if err = producer.KafkaProducer(logger, cfg, db); err != nil {
+			logger.Fatalf("failed to start kafka producer:%s", err)
+		}
+	}()
+
+	go func() {
 		listener, err := net.Listen("tcp", ":"+cfg.GRPC.Port)
 		if err != nil {
 			logger.Fatalf("listen grpc failed:%s", err)
 		}
-		logger.Infof("gRPC started on port:%s", cfg.GRPC.Port)
+		logger.Infof("gRPC starting on port:%s", cfg.GRPC.Port)
 		if err := srv.Serve(listener); err != nil {
 			logger.Fatalf("failed to serve grpc:%s", err)
 		}
@@ -50,5 +58,6 @@ func RunGRPC(cfg *config.Config, logger *logrus.Logger) {
 
 	srv.GracefulStop()
 
+	logger.Info("kafka producer stopped")
 	logger.Info("grpc stopped")
 }

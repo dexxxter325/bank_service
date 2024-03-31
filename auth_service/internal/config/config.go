@@ -9,6 +9,7 @@ type Config struct {
 	GRPC     GRPC
 	Postgres Postgres
 	Auth     Auth
+	Kafka    Kafka
 }
 
 type GRPC struct {
@@ -28,6 +29,11 @@ type Auth struct {
 	SecretKey       string
 	AccessTokenTTL  string
 	RefreshTokenTTL string
+}
+
+type Kafka struct {
+	Brokers string
+	Topic   string
 }
 
 func InitConfig() (*Config, error) {
@@ -59,6 +65,10 @@ func InitConfigByPath(configPath string) (*Config, error) {
 			SecretKey:       viper.GetString("auth.secretKey"),
 			AccessTokenTTL:  viper.GetString("auth.accessTokenTTl"),
 			RefreshTokenTTL: viper.GetString("auth.refreshTokenTTl"),
+		},
+		Kafka: Kafka{
+			Brokers: viper.GetString("kafka.brokers"),
+			Topic:   viper.GetString("kafka.topic"),
 		},
 	}
 

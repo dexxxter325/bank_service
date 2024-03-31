@@ -1,6 +1,14 @@
 version: "3.8"
+
+networks: #connect to external network-to use kafka
+  bank_service:
+    external: true
+
+
 services:
   auth_service:
+    networks:
+      - bank_service
     build: ./
     ports:
       - "8081:8081"
@@ -8,6 +16,8 @@ services:
       - migrate
 
   migrate:
+    networks:
+      - bank_service
     image: migrate/migrate:latest
     volumes:
       - ./database/migrations:/migrations
@@ -19,6 +29,8 @@ services:
       - postgres
 
   postgres:
+    networks:
+      - bank_service
     image:
       postgres:16.2
     environment:
