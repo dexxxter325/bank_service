@@ -5,3 +5,5 @@
 /credit_service/config/local.yml
 /credit_service/.bin
 /credit_service/.env
+/auth_service/.bin
+/auth_service/.env
