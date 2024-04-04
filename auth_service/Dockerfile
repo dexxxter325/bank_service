@@ -4,6 +4,8 @@ COPY . /auth_service
 
 WORKDIR /auth_service
 
+RUN go mod init
+
 RUN go build -o ./.bin/app ./cmd/app/main.go
 
 FROM alpine:latest
