@@ -49,7 +49,7 @@ jobs:
           go-version: 1.21.4
 
       - name: Tests
-        run: |
+        run: |  #go test ./auth_service/...
           cd auth_service
           go test ./...
 

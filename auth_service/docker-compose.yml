@@ -4,7 +4,6 @@ networks: #connect to external network-to usee kafka
   bank_service:
     external: true
 
-
 services:
   auth_service:
     networks:
