@@ -13,7 +13,7 @@ jobs:
       credit_changes: ${{ steps.check_credit_service_output.outputs.changed }}
     steps:
       - name: Checkout main
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
 
       - name: Check for changes in auth_service
         run: |
