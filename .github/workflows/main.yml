@@ -62,8 +62,8 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
-          context: ./auth_service/
-          file: ./Dockerfile
+          context: ./auth_service
+          file: .
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/bank_auth_service:latest
 

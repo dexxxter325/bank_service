@@ -1,6 +1,6 @@
 version: "3.8"
 
-networks: #connect to external network-to usef kafka
+networks: #connect to external network-to use kafka
   bank_service:
     external: true
 
