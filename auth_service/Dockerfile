@@ -16,6 +16,7 @@ COPY ./.env /auth_service/.env
 COPY ./database/migrations /auth_service/database/migrations
 
 
-EXPOSE 81
+EXPOSE 82
+EXPOSE 83
 
 CMD ["./app"]

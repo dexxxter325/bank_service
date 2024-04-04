@@ -2,10 +2,33 @@ syntax="proto3";
 
 option go_package="auth_service/gen";
 
+import "google/api/annotations.proto";
+
 service Auth{
-  rpc Register(RegisterRequest)returns(RegisterResponse);
-  rpc Login(LoginRequest)returns(LoginResponse);
-  rpc RefreshToken(RefreshTokenRequest)returns(RefreshTokenResponse);
+  rpc Register(RegisterRequest)returns(RegisterResponse){
+    option (google.api.http) = {
+      post: "/auth/register"
+      body: "*"
+    };
+  }
+  rpc Login(LoginRequest)returns(LoginResponse){
+    option (google.api.http) = {
+      post: "/auth/login"
+      body: "*"
+    };
+  }
+  rpc RefreshToken(RefreshTokenRequest)returns(RefreshTokenResponse){
+    option (google.api.http) = {
+      post: "/auth/refreshToken"
+      body: "*"
+    };
+  }
+  rpc ValidateAccessToken(ValidateAccessTokenRequest)returns(ValidateAccessTokenResponse){
+    option (google.api.http) = {
+      post: "/auth/validateAccessToken"
+      body: "*"
+    };
+  }
 }
 
 message RegisterRequest{
@@ -31,4 +54,9 @@ message RefreshTokenRequest{
 message RefreshTokenResponse{
   string accessToken=1;
   string refreshToken=2;
+}
+
+message ValidateAccessTokenRequest{}
+message ValidateAccessTokenResponse{
+  bool valid=1;
 }

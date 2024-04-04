@@ -49,7 +49,12 @@ func New(t *testing.T) (context.Context, *Suite) {
 
 	cfg.GRPC.Port, err = findFreePort()
 	if err != nil {
-		t.Fatalf("failed to find ")
+		t.Fatalf("failed to find free port for grpc")
+	}
+
+	cfg.GRPCGateway.Port, err = findFreePort()
+	if err != nil {
+		t.Fatalf("failed to find free port for grpc gateway")
 	}
 
 	if err = TestPostgresDB(ctx, cfg); err != nil {

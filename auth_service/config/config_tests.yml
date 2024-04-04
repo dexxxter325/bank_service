@@ -1,6 +1,9 @@
 grpc:
   port: 0
-  
+
+grpcGateway:
+  port: 0
+
 postgres:
   host: localhost
   port: 0

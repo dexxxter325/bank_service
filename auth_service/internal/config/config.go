@@ -6,13 +6,18 @@ import (
 )
 
 type Config struct {
-	GRPC     GRPC
-	Postgres Postgres
-	Auth     Auth
-	Kafka    Kafka
+	GRPC        GRPC
+	GRPCGateway GRPCGateway
+	Postgres    Postgres
+	Auth        Auth
+	Kafka       Kafka
 }
 
 type GRPC struct {
+	Port string
+}
+
+type GRPCGateway struct {
 	Port string
 }
 
@@ -52,6 +57,9 @@ func InitConfigByPath(configPath string) (*Config, error) {
 	cfg = Config{
 		GRPC: GRPC{
 			Port: viper.GetString("grpc.port"),
+		},
+		GRPCGateway: GRPCGateway{
+			Port: viper.GetString("grpcGateway.port"),
 		},
 		Postgres: Postgres{
 			Host:     viper.GetString("postgres.host"),

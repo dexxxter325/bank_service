@@ -129,3 +129,18 @@ func (s *Service) RefreshToken(ctx context.Context, refreshToken string) (newAcc
 
 	return newAccessToken, newRefreshToken, nil
 }
+
+func (s *Service) ValidateAccessToken(ctx context.Context, accessToken string) (bool, error) {
+	s.logger.Infof("received validateAccessToken req: accessToken=%s", accessToken)
+
+	secretKey := s.cfg.Auth.SecretKey
+
+	ok, err := jwt.ValidateAccessToken(accessToken, secretKey)
+	if !ok && err != nil {
+		return false, err
+	}
+
+	s.logger.Info("access token validated")
+
+	return ok, nil
+}

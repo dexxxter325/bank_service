@@ -8,9 +8,14 @@ import (
 	"bank/auth_service/internal/service"
 	"bank/auth_service/internal/storage"
 	"bank/auth_service/pkg/postgres"
+	"context"
+	"errors"
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -54,10 +59,45 @@ func RunGRPC(cfg *config.Config, logger *logrus.Logger) {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGTERM, syscall.SIGINT)
 
+	shutDownGrpcGateway := RunGrpcGateway(context.Background(), logger, cfg)
+	defer shutDownGrpcGateway()
+
 	<-stop
 
 	srv.GracefulStop()
 
 	logger.Info("kafka producer stopped")
 	logger.Info("grpc stopped")
+}
+
+func RunGrpcGateway(ctx context.Context, logger *logrus.Logger, cfg *config.Config) func() {
+	// Register gRPC server endpoint
+	mux := runtime.NewServeMux()
+	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
+
+	if err := gen.RegisterAuthHandlerFromEndpoint(ctx, mux, "auth_service:"+cfg.GRPC.Port, opts); err != nil { ////docker host
+		logger.Fatalf("register GRPC gateway failed:%s", err)
+	}
+
+	// Start HTTP server (and proxy calls to gRPC server endpoint)
+	srv := &http.Server{
+		Addr:    ":" + cfg.GRPCGateway.Port,
+		Handler: mux,
+	}
+
+	go func() {
+		logger.Infof("GrpcGateway started on port:%s", cfg.GRPCGateway.Port)
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(http.ErrServerClosed, err) {
+			logger.Fatalf("run GrpcGateway failed:%s", err)
+		}
+	}()
+
+	shutDownGrpcGateway := func() {
+		if err := srv.Shutdown(ctx); err != nil {
+			logger.Fatalf("shutdown grpc gateway failed:%s", err)
+		}
+		logger.Info("grpc gateway stopped")
+	}
+
+	return shutDownGrpcGateway
 }

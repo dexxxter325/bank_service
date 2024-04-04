@@ -5,13 +5,16 @@ import (
 	"context"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
+	"strings"
 )
 
 type Service interface {
 	Register(ctx context.Context, username, password string) (int64, error)
 	Login(ctx context.Context, username, password string) (accessToken, refreshToken string, err error)
 	RefreshToken(ctx context.Context, refreshToken string) (newAccessToken, newRefreshToken string, err error)
+	ValidateAccessToken(ctx context.Context, accessToken string) (bool, error)
 }
 
 type AuthServer struct { //=Handler
@@ -88,5 +91,45 @@ func (s *AuthServer) RefreshToken(ctx context.Context, req *gen.RefreshTokenRequ
 	return &gen.RefreshTokenResponse{
 		AccessToken:  newAccessToken,
 		RefreshToken: newRefreshToken,
+	}, nil
+}
+
+func (s *AuthServer) ValidateAccessToken(ctx context.Context, req *gen.ValidateAccessTokenRequest) (*gen.ValidateAccessTokenResponse, error) {
+	requestCtx, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		s.logger.Error("failed to get ctx in interceptor")
+		return nil, status.Error(codes.Unauthenticated, "failed to get ctx in interceptor")
+	}
+
+	header := requestCtx.Get("Authorization")
+
+	if len(header) == 0 {
+		s.logger.Error("authorization header in empty")
+		return nil, status.Error(codes.Unauthenticated, "authorization header in empty")
+	}
+
+	bearerAndToken := header[0]
+	headerParts := strings.Split(bearerAndToken, " ") //делим на 2 части: до пробела и после
+
+	accessToken := headerParts[1]
+
+	if len(headerParts) != 2 && headerParts[0] != "Bearer" {
+		s.logger.Error("invalid auth header")
+		return nil, status.Errorf(codes.Unauthenticated, "invalid auth header")
+	}
+
+	if len(accessToken) == 0 {
+		s.logger.Error("empty auth token")
+		return nil, status.Error(codes.Unauthenticated, "empty auth token")
+	}
+
+	ok, err := s.service.ValidateAccessToken(ctx, accessToken)
+	if !ok && err != nil {
+		s.logger.Errorf("failed to validate access token:%s", err)
+		return nil, status.Errorf(codes.Unauthenticated, "failed to validate access token:%s", err)
+	}
+
+	return &gen.ValidateAccessTokenResponse{
+		Valid: ok,
 	}, nil
 }

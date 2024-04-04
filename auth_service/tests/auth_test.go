@@ -6,6 +6,7 @@ import (
 	"bank/auth_service/tests/suite"
 	"github.com/brianvoe/gofakeit"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc/metadata"
 	"testing"
 )
 
@@ -51,6 +52,13 @@ func TestAuth_Ok(t *testing.T) {
 
 	newRefreshToken := refreshTokenResp.GetRefreshToken()
 	require.NotEmpty(t, newRefreshToken)
+
+	md := metadata.New(map[string]string{"Authorization": "Bearer " + accessToken})
+	ctx = metadata.NewOutgoingContext(ctx, md)
+	validateAccessTokenResp, err := st.AuthClient.ValidateAccessToken(ctx, &gen.ValidateAccessTokenRequest{})
+	require.NoError(t, err)
+	validAccessToken := validateAccessTokenResp.GetValid()
+	require.NotEmpty(t, validAccessToken)
 }
 
 func TestRegister_Fail(t *testing.T) {
@@ -168,6 +176,41 @@ func TestRefreshToken_Fail(t *testing.T) {
 			_, err := st.AuthClient.RefreshToken(ctx, &gen.RefreshTokenRequest{
 				RefreshToken: tt.refreshToken,
 			})
+			require.Error(t, err)
+			require.Contains(t, err.Error(), tt.expectedErr)
+		})
+	}
+}
+
+func TestValidateAccessToken_Fail(t *testing.T) {
+	ctx, st := suite.New(t)
+
+	tests := []struct {
+		name        string
+		accessToken string
+		expectedErr string
+	}{
+		{
+			name:        "empty accessToken",
+			accessToken: "",
+			expectedErr: "empty auth token",
+		},
+		{
+			name:        "incorrect number of characters in access token",
+			accessToken: "qwerty123",
+			expectedErr: "token contains an invalid number of segments",
+		},
+		{
+			name:        "invalid access token",
+			accessToken: "000000000000000",
+			expectedErr: "parse accessToken failed",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			md := metadata.New(map[string]string{"Authorization": "Bearer " + tt.accessToken})
+			ctx = metadata.NewOutgoingContext(ctx, md)
+			_, err := st.AuthClient.ValidateAccessToken(ctx, &gen.ValidateAccessTokenRequest{})
 			require.Error(t, err)
 			require.Contains(t, err.Error(), tt.expectedErr)
 		})
