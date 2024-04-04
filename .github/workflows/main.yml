@@ -17,7 +17,7 @@ jobs:
         with:
           fetch-depth: 2
 
-      - name: Check for changes in auth_service
+      - name: Check for changes in services
         id: check_files
         run: |
           echo "=============== list modified files ==============="
@@ -37,7 +37,7 @@ jobs:
 
   auth_service:
     needs: check_changes
-    if: needs.check.outputs.auth_service == 'true'
+    if: ${{ needs.check_changes.outputs.auth_service == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout main
