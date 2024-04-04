@@ -18,7 +18,7 @@ jobs:
           fetch-depth: 2
 
       - name: Check for changes in auth_service
-        id: check_files
+        id: check_auth_files
         run: |
             if git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -q "^auth_service/"; then
               echo "::set-output name=changed::true"
@@ -27,7 +27,7 @@ jobs:
             fi
 
       - name: Check for changes in credit_service
-        id: check_files
+        id: check_credit_files
         run: |
             if git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -q "^credit_service/"; then
               echo "::set-output name=changed::true"
