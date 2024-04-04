@@ -1,0 +1,91 @@
+name: Deploy bank_service
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  check_changes:
+    runs-on: ubuntu-latest
+    outputs:
+      auth_changes: ${{ steps.check_auth_service_output.outputs.changed }}
+      credit_changes: ${{ steps.check_credit_service_output.outputs.changed }}
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+
+      - name: Check for changes in auth_service
+        run: |
+            if git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -q "^auth_service/"; then
+              echo "::set-output name=changed::true"
+            else
+              echo "::set-output name=changed::false"
+            fi
+
+      - name: Check for changes in credit_service
+        run: |
+            if git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -q "^credit_service/"; then
+              echo "::set-output name=changed::true"
+            else
+              echo "::set-output name=changed::false"
+            fi    
+
+  auth_service:
+    runs-on: ubuntu-latest
+    needs: check_changes
+    if: ${{ needs.check_changes.outputs.auth_service_changes == 'true' }}
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+
+      - name: Set up Go 1.21.4
+        uses: actions/setup-go@v4
+        with:
+          go-version: 1.21.4
+        run: go test ./...
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: auth_service/
+          file: ./Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/bank_auth_service:latest
+
+  credit_service:
+    runs-on: ubuntu-latest
+    needs: check_changes
+    if: ${{ needs.check_changes.outputs.credit_service_changes == 'true' }}
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+
+      - name: Set up Go 1.21.4
+        uses: actions/setup-go@v4
+        with:
+          go-version: 1.21.4
+        run: go test ./...
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: credit/service/
+          file: ./Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/bank_credit_service:latest
+
+
+
