@@ -1,6 +1,6 @@
 version: "3.8"
 
-networks: #connect to external network-to userrf kafka
+networks: #connect to external network-to user kafka
   bank_service:
     external: true
 
