@@ -64,6 +64,9 @@ func KafkaConsumer(ctx context.Context, cfg *config.Config, logger *logrus.Logge
 			credit.UserID = int64(binary.BigEndian.Uint64(msg.Value))
 
 			if err = NewUserIDCollection(ctx, cfg, db, credit.UserID); err != nil {
+				if err.Error() == fmt.Sprintf("userID:%v already inserted into MongoDB", credit.UserID) {
+					continue //в начало цикла
+				}
 				logger.Errorf("Error inserting userID into MongoDB: %v", err)
 				return err
 			}
@@ -72,7 +75,6 @@ func KafkaConsumer(ctx context.Context, cfg *config.Config, logger *logrus.Logge
 
 		case <-stop:
 			logger.Info("MongoDB and reader in kafka shutting down...")
-
 			return nil
 		}
 	}
@@ -97,7 +99,7 @@ func NewUserIDCollection(ctx context.Context, cfg *config.Config, db *mongo.Clie
 		return nil
 	}
 
-	return nil
+	return fmt.Errorf("userID:%v already inserted into MongoDB", userID)
 }
 
 func IsUserIdNOTExist(ctx context.Context, userID int64, collection *mongo.Collection) bool {

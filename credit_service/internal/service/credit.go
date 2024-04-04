@@ -27,7 +27,7 @@ func (s *Service) CreateCredit(ctx context.Context, credit models.Credit) (creat
 
 	createdCredit, err = s.storage.CreateCredit(ctx, credit)
 	if err != nil {
-		s.logger.Errorf("faield to create credit:%s", err)
+		s.logger.Errorf("failed to create credit:%s", err)
 		return models.Credit{}, err
 	}
 

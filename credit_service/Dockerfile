@@ -14,6 +14,6 @@ WORKDIR /credit_service
 COPY --from=builder /credit_service/.bin/app .
 COPY ./config/local.yml /credit_service/config/
 
-EXPOSE 80
+EXPOSE 81
 
 CMD ["./app"]
