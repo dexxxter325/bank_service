@@ -18,5 +18,3 @@ func main() {
 
 	app.RunRest(cfg, logger)
 }
-
-//test

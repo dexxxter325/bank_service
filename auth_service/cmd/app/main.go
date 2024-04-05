@@ -18,5 +18,3 @@ func main() {
 
 	app.RunGRPC(cfg, logger)
 }
-
-//test
