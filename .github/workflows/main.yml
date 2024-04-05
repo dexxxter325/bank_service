@@ -28,9 +28,9 @@ jobs:
           while IFS= read -r file; do
             echo $file
             if [[ $file == auth_service/* ]]; then
-              echo "{auth_service}={true}" >> $GITHUB_OUTPUT
+              echo "auth_service=true" >> $GITHUB_OUTPUT
             elif [[ $file == credit_service/* ]]; then
-              echo "{credit_service}={true}" >> $GITHUB_OUTPUT
+              echo "credit_service=true" >> $GITHUB_OUTPUT
             fi
           done < files.txt
  
