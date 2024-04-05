@@ -13,7 +13,7 @@ jobs:
       credit_service: ${{ steps.check_files.outputs.credit_service }}
     steps:
       - name: Checkout main
-        uses: actions/checkout@v3.1.0
+        uses: actions/checkout@v2
         with:
           fetch-depth: 2
 

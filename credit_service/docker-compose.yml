@@ -8,7 +8,8 @@ services:
   credit_service:
     networks:
       - bank_service
-    build: ./
+    #build: ./
+    image: flaw1ess/bank_credit_service:latest
     ports:
       - "8081:8081"
     depends_on:
