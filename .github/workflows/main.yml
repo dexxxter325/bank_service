@@ -18,7 +18,7 @@ jobs:
           fetch-depth: 2
 
       - name: Check for changes in services
-        id: check_files
+        #id: check_files
         run: |
           echo "=============== list modified files ==============="
           git diff --name-only HEAD^ HEAD

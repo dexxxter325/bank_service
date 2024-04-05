@@ -4,16 +4,12 @@ COPY . /auth_service/
 
 WORKDIR /auth_service/
 
-#RUN go mod init bank/auth_service
 RUN go build -o ./.bin/app ./cmd/app/main.go
 
 FROM alpine:latest
 
-#WORKDIR /auth_service/
-
 COPY --from=0 /auth_service/.bin/app .
 COPY --from=0 /auth_service/config config/
-#COPY --from=0 bank/auth_service/.env .env
 
 EXPOSE 82
 EXPOSE 83
