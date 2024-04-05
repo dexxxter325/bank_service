@@ -9,8 +9,8 @@ jobs:
   check_changes:
     runs-on: ubuntu-latest
     outputs:
-      auth_service: ${{ x }}
-      credit_service: ${{ x }}
+      auth_service: ${{ steps.check_files.outputs.auth_service }}
+      credit_service: ${{ steps.check_files.outputs.credit_service }}
     steps:
       - name: Checkout main
         uses: actions/checkout@v3.1.0
@@ -68,7 +68,7 @@ jobs:
 
   credit_service:
     needs: check_changes
-    if: needs.check.outputs.credit_service == 'true'
+    if: ${{ needs.check_changes.outputs.credit_service == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout main
@@ -80,7 +80,9 @@ jobs:
           go-version: 1.21.4
 
       - name: Tests
-        run: go test ./...
+        run: |
+          cd credit_service
+          go test ./...
 
       - name: Login to Docker Hub
         uses: docker/login-action@v3
@@ -91,8 +93,7 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
-          context: credit/service/
-          file: ./Dockerfile
+          context: ./credit_service
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/bank_credit_service:latest
 
