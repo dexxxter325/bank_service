@@ -17,3 +17,5 @@ COPY ./config/local.yml /credit_service/config/
 EXPOSE 81
 
 CMD ["./app"]
+
+#TODO: ОСТАЛОСЬ ДОБИТЬ DOCKERFILE.не видит почему-то  go build -o
