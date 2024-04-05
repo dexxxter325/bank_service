@@ -1,4 +1,4 @@
-FROM golang:1.22.1-alpine3.19 AS builder
+FROM golang:1.22.1-alpine3.19 AS build
 
 COPY . /auth_service
 
@@ -11,9 +11,9 @@ FROM alpine:latest
 
 WORKDIR /auth_service
 
-COPY --from=builder /auth_service/.bin/app .
-COPY --from=builder /auth_service/config/local.yml .
-COPY --from=builder /auth_service/.env .
+COPY --from=build /auth_service/.bin/app .
+COPY --from=build /auth_service/config/local.yml /auth_service/config/local.yml
+COPY --from=build /auth_service/.env /auth_service/.env
 
 EXPOSE 82
 EXPOSE 83
