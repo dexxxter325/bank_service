@@ -8,7 +8,8 @@ services:
   auth_service:
     networks:
       - bank_service
-    build: ./
+    #build: ./
+    image: flaw1ess/bank_auth_service:latest
     ports:
       - "8082:8082"
     depends_on:
@@ -17,7 +18,8 @@ services:
   grpc_gateway:
     networks:
       - bank_service
-    build: ./
+    #build: ./
+    image: flaw1ess/bank_auth_service:latest
     ports:
       - "8083:8083"
     depends_on:
