@@ -9,8 +9,8 @@ jobs:
   check_changes:
     runs-on: ubuntu-latest
     outputs:
-      auth_service: ${{ steps.check_files.outputs.auth_service }}
-      credit_service: ${{ steps.check_files.outputs.credit_service }}
+      auth_service: ${{ x }}
+      credit_service: ${{ x }}
     steps:
       - name: Checkout main
         uses: actions/checkout@v3.1.0
