@@ -1,7 +1,7 @@
 package tests
 
 import (
-	"bank/credit_service/internal/kafka/consumer"
+	"bank/credit_service/internal/storage"
 	"bank/credit_service/tests/suite"
 	"bytes"
 	"context"
@@ -47,7 +47,9 @@ func TestCredit_OK(t *testing.T) {
 
 	userID := randomInt64()
 
-	err = consumer.NewUserIDCollection(ctx, st.Cfg, st.MongoClient, userID)
+	ConsumerMongoDB := storage.NewConsumerMongoDB(st.MongoClient.Database(st.Cfg.MongoDb.Dbname), st.Cfg.MongoDb.UserIDCollection)
+
+	err = ConsumerMongoDB.NewUserIDCollection(ctx, userID)
 	require.NoError(t, err)
 
 	createReqData := Request{
@@ -562,7 +564,9 @@ func randomHex() string {
 func getIdForReq(st *suite.Suite, t *testing.T, restPort string) (CreditResponse, func() error) {
 	userID := randomInt64()
 
-	err := consumer.NewUserIDCollection(context.Background(), st.Cfg, st.MongoClient, userID)
+	ConsumerMongoDB := storage.NewConsumerMongoDB(st.MongoClient.Database(st.Cfg.MongoDb.Dbname), st.Cfg.MongoDb.UserIDCollection)
+
+	err := ConsumerMongoDB.NewUserIDCollection(context.Background(), userID)
 	require.NoError(t, err)
 
 	createReqData := Request{

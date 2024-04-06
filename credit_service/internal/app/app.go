@@ -38,6 +38,7 @@ func RunRest(cfg *config.Config, logger *logrus.Logger) {
 	storages := storage.NewStorage(db, cfg.MongoDb.CreditCollection, cfg.MongoDb.UserIDCollection)
 	services := service.NewService(logger, storages)
 	handlers := rest.NewHandler(logger, services)
+	kc := consumer.NewKafkaConsumer(storages)
 
 	srv := &http.Server{
 		Addr:    ":" + cfg.Rest.Port,
@@ -49,7 +50,7 @@ func RunRest(cfg *config.Config, logger *logrus.Logger) {
 
 	go func() {
 		logger.Infof("kafka consumer starting:%s", cfg.Kafka.Brokers)
-		if err = consumer.KafkaConsumer(context.Background(), cfg, logger, db.Client(), stop); err != nil {
+		if err = kc.KafkaConsumer(context.Background(), cfg, logger, db.Client(), stop); err != nil {
 			logger.Fatalf("failed to start kafka consumer:%s", err)
 		}
 	}()

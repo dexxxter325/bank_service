@@ -34,13 +34,14 @@ func RunGRPC(cfg *config.Config, logger *logrus.Logger) {
 	storages := storage.NewStorage(db)
 	services := service.NewService(storages, logger, cfg)
 	handlers := handler.NewAuthServer(services, logger)
+	kp := producer.NewKafkaProducer(storages)
 
 	srv := grpc.NewServer()
 	gen.RegisterAuthServer(srv, handlers)
 
 	go func() {
 		logger.Infof("kafka producer starting:%s", cfg.Kafka.Brokers)
-		if err = producer.KafkaProducer(logger, cfg, db); err != nil {
+		if err = kp.KafkaProducer(logger, cfg, db); err != nil {
 			logger.Fatalf("failed to start kafka producer:%s", err)
 		}
 	}()

@@ -3,19 +3,27 @@ package consumer
 import (
 	"bank/credit_service/internal/config"
 	"bank/credit_service/internal/domain/models"
+	"bank/credit_service/internal/service"
 	"context"
 	"encoding/binary"
 	"errors"
 	"fmt"
 	"github.com/segmentio/kafka-go"
 	"github.com/sirupsen/logrus"
-	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"os"
 	"time"
 )
 
-func KafkaConsumer(ctx context.Context, cfg *config.Config, logger *logrus.Logger, db *mongo.Client, stop <-chan os.Signal) error {
+type KafkaConsumer struct {
+	storage service.Storage
+}
+
+func NewKafkaConsumer(storage service.Storage) *KafkaConsumer {
+	return &KafkaConsumer{storage: storage}
+}
+
+func (k *KafkaConsumer) KafkaConsumer(ctx context.Context, cfg *config.Config, logger *logrus.Logger, db *mongo.Client, stop <-chan os.Signal) error {
 
 	var credit models.Credit
 
@@ -63,7 +71,7 @@ func KafkaConsumer(ctx context.Context, cfg *config.Config, logger *logrus.Logge
 			// Получение userID из сообщения
 			credit.UserID = int64(binary.BigEndian.Uint64(msg.Value))
 
-			if err = NewUserIDCollection(ctx, cfg, db, credit.UserID); err != nil {
+			if err = k.storage.NewUserIDCollection(ctx, credit.UserID); err != nil {
 				if err.Error() == fmt.Sprintf("userID:%v already inserted into MongoDB", credit.UserID) {
 					continue //в начало цикла
 				}
@@ -83,37 +91,4 @@ func KafkaConsumer(ctx context.Context, cfg *config.Config, logger *logrus.Logge
 func tryConnectToKafka(ctx context.Context, reader *kafka.Reader) error {
 	_, err := reader.ReadMessage(ctx)
 	return err
-}
-
-func NewUserIDCollection(ctx context.Context, cfg *config.Config, db *mongo.Client, userID int64) error {
-	collection := db.Database(cfg.MongoDb.Dbname).Collection(cfg.MongoDb.UserIDCollection)
-
-	if IsUserIdNOTExist(ctx, userID, collection) {
-		query := bson.M{"userID": userID}
-
-		_, err := collection.InsertOne(ctx, query)
-		if err != nil {
-			return fmt.Errorf("failed to insert userID:%s", err)
-		}
-
-		return nil
-	}
-
-	return fmt.Errorf("userID:%v already inserted into MongoDB", userID)
-}
-
-func IsUserIdNOTExist(ctx context.Context, userID int64, collection *mongo.Collection) bool {
-	query := bson.M{"userID": userID}
-
-	res := collection.FindOne(ctx, query)
-
-	if errors.Is(res.Err(), mongo.ErrNoDocuments) {
-		return true
-	}
-
-	if res.Err() != nil {
-		return true
-	}
-
-	return false
 }

@@ -9,17 +9,15 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type Postgres struct {
+type AuthPostgres struct {
 	db *pgxpool.Pool
 }
 
-func NewStorage(db *pgxpool.Pool) *Postgres {
-	return &Postgres{db: db}
+func NewAuthPostgres(db *pgxpool.Pool) *AuthPostgres {
+	return &AuthPostgres{db: db}
 }
 
-//TODO:методы storage и interceptor!
-
-func (p *Postgres) SaveUser(ctx context.Context, username string, hashedPassword []byte) (userId int64, err error) {
+func (p *AuthPostgres) SaveUser(ctx context.Context, username string, hashedPassword []byte) (userId int64, err error) {
 	query := "insert into users (username,password) values($1,$2) returning id"
 
 	row := p.db.QueryRow(ctx, query, username, hashedPassword)
@@ -31,7 +29,7 @@ func (p *Postgres) SaveUser(ctx context.Context, username string, hashedPassword
 	return userId, err
 }
 
-func (p *Postgres) GetUserByUsername(ctx context.Context, username string) (user models.User, err error) {
+func (p *AuthPostgres) GetUserByUsername(ctx context.Context, username string) (user models.User, err error) {
 	query := "select * from users where username=$1"
 
 	row := p.db.QueryRow(ctx, query, username)
@@ -46,7 +44,7 @@ func (p *Postgres) GetUserByUsername(ctx context.Context, username string) (user
 	return user, nil
 }
 
-func (p *Postgres) GetUserById(ctx context.Context, userId int64) (user models.User, err error) {
+func (p *AuthPostgres) GetUserById(ctx context.Context, userId int64) (user models.User, err error) {
 	query := "select * from users where id=$1"
 
 	row := p.db.QueryRow(ctx, query, userId)

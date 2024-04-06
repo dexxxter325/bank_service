@@ -2,7 +2,6 @@ package storage
 
 import (
 	"bank/credit_service/internal/domain/models"
-	"bank/credit_service/internal/kafka/consumer"
 	"context"
 	"errors"
 	"fmt"
@@ -12,24 +11,24 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-type MongoDB struct {
+type AuthMongoDB struct {
 	creditCollection *mongo.Collection
 	userIDCollection *mongo.Collection
 }
 
-func NewStorage(DB *mongo.Database, creditCollection, userIDCollection string) *MongoDB {
-	return &MongoDB{
+func NewAuthMongoDB(DB *mongo.Database, creditCollection, userIDCollection string) *AuthMongoDB {
+	return &AuthMongoDB{
 		creditCollection: DB.Collection(creditCollection),
 		userIDCollection: DB.Collection(userIDCollection),
 	}
 }
 
-func (d *MongoDB) CreateCredit(ctx context.Context, credit models.Credit) (models.Credit, error) {
+func (d *AuthMongoDB) CreateCredit(ctx context.Context, credit models.Credit) (models.Credit, error) {
 	if d.IsCreditExist(ctx, credit.UserID, credit.Amount, credit.Term, credit.Currency, credit.AnnualInterestRate) {
 		return models.Credit{}, errors.New("you already took this credit")
 	}
 
-	if consumer.IsUserIdNOTExist(ctx, credit.UserID, d.userIDCollection) {
+	if IsUserIdNOTExist(ctx, credit.UserID, d.userIDCollection) {
 		return models.Credit{}, fmt.Errorf("provided userID:%v doesn't exist", credit.UserID)
 	}
 
@@ -48,7 +47,7 @@ func (d *MongoDB) CreateCredit(ctx context.Context, credit models.Credit) (model
 
 }
 
-func (d *MongoDB) GetCredits(ctx context.Context) ([]models.Credit, error) {
+func (d *AuthMongoDB) GetCredits(ctx context.Context) ([]models.Credit, error) {
 	//получаем все доки в коллекции.
 	res, err := d.creditCollection.Find(ctx, bson.M{}) //в bson.M{} хранятся поля,которые мы хотим получить из коллекции
 	if err != nil {
@@ -79,7 +78,7 @@ func (d *MongoDB) GetCredits(ctx context.Context) ([]models.Credit, error) {
 	return credits, nil
 }
 
-func (d *MongoDB) GetCreditById(ctx context.Context, id string) (credit models.Credit, err error) {
+func (d *AuthMongoDB) GetCreditById(ctx context.Context, id string) (credit models.Credit, err error) {
 	objectID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
 		return credit, fmt.Errorf("failed to conver string to ObjectID:%s", err)
@@ -103,7 +102,7 @@ func (d *MongoDB) GetCreditById(ctx context.Context, id string) (credit models.C
 	return credit, nil
 }
 
-func (d *MongoDB) GetCreditsByUserId(ctx context.Context, userID int64) ([]models.Credit, error) {
+func (d *AuthMongoDB) GetCreditsByUserId(ctx context.Context, userID int64) ([]models.Credit, error) {
 	query := bson.M{"userID": userID}
 
 	res, err := d.creditCollection.Find(ctx, query)
@@ -136,7 +135,7 @@ func (d *MongoDB) GetCreditsByUserId(ctx context.Context, userID int64) ([]model
 	return credits, nil
 }
 
-func (d *MongoDB) UpdateCredit(ctx context.Context, credit models.Credit) (updatedCredit models.Credit, err error) {
+func (d *AuthMongoDB) UpdateCredit(ctx context.Context, credit models.Credit) (updatedCredit models.Credit, err error) {
 	objectID, err := primitive.ObjectIDFromHex(credit.ID)
 	if err != nil {
 		return updatedCredit, fmt.Errorf("failed to conver string to ObjectID:%s", err)
@@ -172,7 +171,7 @@ func (d *MongoDB) UpdateCredit(ctx context.Context, credit models.Credit) (updat
 	return updatedCredit, nil
 }
 
-func (d *MongoDB) DeleteCredit(ctx context.Context, id string) error {
+func (d *AuthMongoDB) DeleteCredit(ctx context.Context, id string) error {
 	ObjectID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
 		return fmt.Errorf("failed to conver string to ObjectID:%s", err)
@@ -192,7 +191,7 @@ func (d *MongoDB) DeleteCredit(ctx context.Context, id string) error {
 	return nil
 }
 
-func (d *MongoDB) IsCreditExist(ctx context.Context, userID int64, amount, term int, currency string, annualInterestRate float64) bool {
+func (d *AuthMongoDB) IsCreditExist(ctx context.Context, userID int64, amount, term int, currency string, annualInterestRate float64) bool {
 	query := bson.M{
 		"userID":             userID,
 		"amount":             amount,

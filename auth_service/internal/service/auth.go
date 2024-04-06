@@ -2,19 +2,12 @@ package service
 
 import (
 	"bank/auth_service/internal/config"
-	"bank/auth_service/internal/domain/models"
 	"bank/auth_service/pkg/jwt"
 	"context"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/bcrypt"
 	"time"
 )
-
-type Storage interface {
-	SaveUser(ctx context.Context, username string, hashedPassword []byte) (int64, error)
-	GetUserByUsername(ctx context.Context, username string) (user models.User, err error)
-	GetUserById(ctx context.Context, userId int64) (user models.User, err error)
-}
 
 type Service struct {
 	storage Storage
