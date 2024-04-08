@@ -3,13 +3,11 @@ package main
 import (
 	"bank/auth_service/internal/app"
 	"bank/auth_service/internal/config"
-	"fmt"
 	"github.com/sirupsen/logrus"
 )
 
 func main() {
-	var MyVariable int
-	fmt.Println(MyVariable)
+	x := 5
 	logger := logrus.New()
 	logger.SetLevel(logrus.DebugLevel)
 	logger.SetFormatter(&logrus.JSONFormatter{})
