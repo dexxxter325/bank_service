@@ -1,6 +1,5 @@
 .idea
 /auth_service/Makefile
-/credit_service/Makefile
 /auth_service/config/local.yml
 /credit_service/config/local.yml
 /credit_service/.bin
