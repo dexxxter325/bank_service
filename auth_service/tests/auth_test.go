@@ -74,19 +74,19 @@ func TestRegister_Fail(t *testing.T) {
 			name:        "empty fields",
 			username:    "",
 			password:    "",
-			expectedErr: "username is required",
+			expectedErr: "you must fill the 'Username' value",
 		},
 		{
 			name:        "empty username",
 			username:    "",
 			password:    fakePass(),
-			expectedErr: "username is required",
+			expectedErr: "you must fill the 'Username' value",
 		},
 		{
 			name:        "empty password",
 			username:    gofakeit.Username(),
 			password:    "",
-			expectedErr: "password is required",
+			expectedErr: "you must fill the 'Password' value",
 		},
 	}
 	for _, tt := range tests {
@@ -114,19 +114,19 @@ func TestLogin_Fail(t *testing.T) {
 			name:        "empty fields",
 			username:    "",
 			password:    "",
-			expectedErr: "username is required",
+			expectedErr: "you must fill the 'Username' value",
 		},
 		{
 			name:        "empty username",
 			username:    "",
 			password:    fakePass(),
-			expectedErr: "username is required",
+			expectedErr: "you must fill the 'Username' value",
 		},
 		{
 			name:        "empty password",
 			username:    gofakeit.Username(),
 			password:    "",
-			expectedErr: "password is required",
+			expectedErr: "you must fill the 'Password' value",
 		},
 		{
 			name:        "incorrect data",
@@ -158,7 +158,7 @@ func TestRefreshToken_Fail(t *testing.T) {
 		{
 			name:         "empty refreshToken",
 			refreshToken: "",
-			expectedErr:  "refresh token required",
+			expectedErr:  "you must fill the 'RefreshToken' value",
 		},
 		{
 			name:         "incorrect number of characters in RefreshToken",

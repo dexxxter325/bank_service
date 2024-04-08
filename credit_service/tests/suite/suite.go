@@ -127,14 +127,17 @@ func NewTestKafka(ctx context.Context, cfg *config.Config, t *testing.T) func() 
 			kafka.WithClusterID("test"),
 			testcontainers.WithImage("confluentinc/confluent-local:7.5.0"),
 		)
+
 		if err == nil {
 			break
 		}
+
 		if err = kafkaContainer.Terminate(ctx); err != nil {
 			t.Errorf("err in terminate testKafkaContainer:%s", err)
 		}
 
 		t.Errorf("failed to start container in test kafka: %s", err)
+		continue
 	}
 
 	kafkaHost, err := kafkaContainer.Host(ctx)

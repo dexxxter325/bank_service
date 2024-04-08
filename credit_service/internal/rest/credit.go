@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
+	"github.com/go-playground/validator/v10"
 	"github.com/sirupsen/logrus"
 	"io"
 	"net/http"
@@ -35,8 +36,8 @@ func (h *Handler) CreateCredit() http.HandlerFunc {
 			return
 		}
 
-		if err := h.AreValuesFilled(credit.UserID, credit.Amount, credit.Term, credit.Currency, credit.AnnualInterestRate, "create"); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+		credit.OperationType = "create"
+		if err := h.ValidateValues(w, &credit); err != nil {
 			return
 		}
 
@@ -132,9 +133,7 @@ func (h *Handler) UpdateCredit() http.HandlerFunc { //return credit
 			return
 		}
 
-		if err := h.AreValuesFilled(credit.UserID, credit.Amount, credit.Term, credit.Currency, credit.AnnualInterestRate, "update"); err != nil {
-			h.logger.Error(err)
-			http.Error(w, err.Error(), http.StatusBadRequest)
+		if err := h.ValidateValues(w, &credit); err != nil {
 			return
 		}
 
@@ -186,35 +185,21 @@ func (h *Handler) decodeJSONFromBody(w http.ResponseWriter, r *http.Request, dat
 			return err
 		}
 		h.logger.Errorf("failed to decode request body: %s", err)
-		http.Error(w, "failed to decode request body", http.StatusBadRequest)
+		http.Error(w, fmt.Sprintf("failed to decode request body:%s", err), http.StatusBadRequest)
 		return err
 	}
 	return nil
 }
 
-func (h *Handler) AreValuesFilled(userID int64, amount, term int, currency string, annualInterestRate float64, operationType string) error {
-	if operationType == "create" {
-		if userID == 0 {
-			h.logger.Error("you must fill the 'userID' value")
-			return errors.New("you must fill the 'userID' value")
-		}
+func (h *Handler) ValidateValues(w http.ResponseWriter, credit *models.Credit) error {
+	validate := validator.New()
+
+	if err := validate.Struct(credit); err != nil {
+		validateErr := err.(validator.ValidationErrors)
+		h.logger.Errorf("invalid req:%s", ValidationErrors(validateErr))
+		http.Error(w, fmt.Sprintf("invalid req:%s", ValidationErrors(validateErr)), http.StatusBadRequest)
+		return err
 	}
 
-	if amount == 0 {
-		h.logger.Error("you must fill the 'amount' value")
-		return errors.New("you must fill the 'amount' value")
-	}
-	if currency == "" {
-		h.logger.Error("you must fill the 'currency' value")
-		return errors.New("you must fill the 'currency' value")
-	}
-	if term == 0 {
-		h.logger.Error("you must fill the 'term' value")
-		return errors.New("you must fill the 'term' value")
-	}
-	if annualInterestRate == 0 {
-		h.logger.Error("you must fill the 'annualInterestRate' value")
-		return errors.New("you must fill the 'annualInterestRate' value")
-	}
 	return nil
 }

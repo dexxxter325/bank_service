@@ -3,6 +3,7 @@ package handler
 import (
 	"bank/auth_service/gen"
 	"context"
+	"github.com/go-playground/validator/v10"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -31,15 +32,24 @@ func NewAuthServer(service Service, logger *logrus.Logger) *AuthServer {
 	}
 }
 
+type RequestDTO struct {
+	Username      string `validate:"required_if=OperationType authorization"`
+	Password      string `validate:"required_if=OperationType authorization"`
+	RefreshToken  string `validate:"required_if=OperationType refreshToken"`
+	OperationType string
+}
+
 func (s *AuthServer) Register(ctx context.Context, req *gen.RegisterRequest) (*gen.RegisterResponse, error) {
-	if req.GetUsername() == "" {
-		s.logger.Error("username is required")
-		return nil, status.Error(codes.InvalidArgument, "username is required")
+
+	dto := RequestDTO{
+		Username: req.GetUsername(),
+		Password: req.GetPassword(),
 	}
 
-	if req.GetPassword() == "" {
-		s.logger.Error("password is required")
-		return nil, status.Error(codes.InvalidArgument, "password is required")
+	dto.OperationType = "authorization"
+
+	if err := s.ValidateValues(&dto); err != nil {
+		return nil, err
 	}
 
 	userId, err := s.service.Register(ctx, req.GetUsername(), req.GetPassword())
@@ -54,14 +64,16 @@ func (s *AuthServer) Register(ctx context.Context, req *gen.RegisterRequest) (*g
 }
 
 func (s *AuthServer) Login(ctx context.Context, req *gen.LoginRequest) (*gen.LoginResponse, error) {
-	if req.GetUsername() == "" {
-		s.logger.Error("username is required")
-		return nil, status.Error(codes.InvalidArgument, "username is required")
+
+	dto := RequestDTO{
+		Username: req.GetUsername(),
+		Password: req.GetPassword(),
 	}
 
-	if req.GetPassword() == "" {
-		s.logger.Error("password is required")
-		return nil, status.Error(codes.InvalidArgument, "password is required")
+	dto.OperationType = "authorization"
+
+	if err := s.ValidateValues(&dto); err != nil {
+		return nil, err
 	}
 
 	accessToken, refreshToken, err := s.service.Login(ctx, req.GetUsername(), req.GetPassword())
@@ -77,9 +89,15 @@ func (s *AuthServer) Login(ctx context.Context, req *gen.LoginRequest) (*gen.Log
 }
 
 func (s *AuthServer) RefreshToken(ctx context.Context, req *gen.RefreshTokenRequest) (*gen.RefreshTokenResponse, error) {
-	if req.GetRefreshToken() == "" {
-		s.logger.Error("refresh token required")
-		return nil, status.Error(codes.InvalidArgument, "refresh token required")
+
+	dto := RequestDTO{
+		RefreshToken: req.GetRefreshToken(),
+	}
+
+	dto.OperationType = "refreshToken"
+
+	if err := s.ValidateValues(&dto); err != nil {
+		return nil, err
 	}
 
 	newAccessToken, newRefreshToken, err := s.service.RefreshToken(ctx, req.GetRefreshToken())
@@ -132,4 +150,16 @@ func (s *AuthServer) ValidateAccessToken(ctx context.Context, req *gen.ValidateA
 	return &gen.ValidateAccessTokenResponse{
 		Valid: ok,
 	}, nil
+}
+
+func (s *AuthServer) ValidateValues(req *RequestDTO) error {
+	validate := validator.New()
+
+	if err := validate.Struct(req); err != nil {
+		validateErr := err.(validator.ValidationErrors)
+		s.logger.Errorf("invalid req:%s", ValidationErrors(validateErr))
+		return status.Errorf(codes.InvalidArgument, "invalid req:%s", ValidationErrors(validateErr))
+	}
+
+	return nil
 }

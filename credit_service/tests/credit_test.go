@@ -185,7 +185,7 @@ func TestCreate_Fail(t *testing.T) {
 	}{
 		{
 			name:               "empty fields",
-			expectedErr:        "you must fill the 'userID' value",
+			expectedErr:        "you must fill the 'UserID' value",
 			expectedStatusCode: http.StatusBadRequest,
 		},
 		{
@@ -195,7 +195,7 @@ func TestCreate_Fail(t *testing.T) {
 			currency:           randomString(5),
 			term:               randomInt(),
 			annualInterestRate: randomFloat64(),
-			expectedErr:        "you must fill the 'userID' value",
+			expectedErr:        "you must fill the 'UserID' value",
 			expectedStatusCode: http.StatusBadRequest,
 		},
 		{
@@ -205,7 +205,7 @@ func TestCreate_Fail(t *testing.T) {
 			currency:           randomString(5),
 			term:               randomInt(),
 			annualInterestRate: randomFloat64(),
-			expectedErr:        "you must fill the 'amount' value",
+			expectedErr:        "you must fill the 'Amount' value",
 			expectedStatusCode: http.StatusBadRequest,
 		},
 		{
@@ -215,7 +215,7 @@ func TestCreate_Fail(t *testing.T) {
 			currency:           "",
 			term:               randomInt(),
 			annualInterestRate: randomFloat64(),
-			expectedErr:        "you must fill the 'currency' value",
+			expectedErr:        "you must fill the 'Currency' value",
 			expectedStatusCode: http.StatusBadRequest,
 		},
 		{
@@ -225,7 +225,7 @@ func TestCreate_Fail(t *testing.T) {
 			currency:           randomString(5),
 			term:               0,
 			annualInterestRate: randomFloat64(),
-			expectedErr:        "you must fill the 'term' value",
+			expectedErr:        "you must fill the 'Term' value",
 			expectedStatusCode: http.StatusBadRequest,
 		},
 		{
@@ -235,7 +235,7 @@ func TestCreate_Fail(t *testing.T) {
 			currency:           randomString(5),
 			term:               randomInt(),
 			annualInterestRate: 0,
-			expectedErr:        "you must fill the 'annualInterestRate' value",
+			expectedErr:        "you must fill the 'AnnualInterestRate' value",
 			expectedStatusCode: http.StatusBadRequest,
 		},
 	}
@@ -408,7 +408,7 @@ func TestUpdate_Fail(t *testing.T) {
 	}{
 		{
 			name:               "empty fields",
-			expectedErr:        "you must fill the 'amount' value",
+			expectedErr:        "you must fill the 'Amount' value",
 			expectedStatusCode: http.StatusBadRequest,
 		},
 		{
@@ -417,7 +417,7 @@ func TestUpdate_Fail(t *testing.T) {
 			currency:           randomString(5),
 			term:               randomInt(),
 			annualInterestRate: randomFloat64(),
-			expectedErr:        "you must fill the 'amount' value",
+			expectedErr:        "you must fill the 'Amount' value",
 			expectedStatusCode: http.StatusBadRequest,
 		},
 		{
@@ -426,7 +426,7 @@ func TestUpdate_Fail(t *testing.T) {
 			currency:           "",
 			term:               randomInt(),
 			annualInterestRate: randomFloat64(),
-			expectedErr:        "you must fill the 'currency' value",
+			expectedErr:        "you must fill the 'Currency' value",
 			expectedStatusCode: http.StatusBadRequest,
 		},
 		{
@@ -435,7 +435,7 @@ func TestUpdate_Fail(t *testing.T) {
 			currency:           randomString(5),
 			term:               0,
 			annualInterestRate: randomFloat64(),
-			expectedErr:        "you must fill the 'term' value",
+			expectedErr:        "you must fill the 'Term' value",
 			expectedStatusCode: http.StatusBadRequest,
 		},
 		{
@@ -444,7 +444,7 @@ func TestUpdate_Fail(t *testing.T) {
 			currency:           randomString(5),
 			term:               randomInt(),
 			annualInterestRate: 0,
-			expectedErr:        "you must fill the 'annualInterestRate' value",
+			expectedErr:        "you must fill the 'AnnualInterestRate' value",
 			expectedStatusCode: http.StatusBadRequest,
 		},
 	}
