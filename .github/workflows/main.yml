@@ -19,7 +19,7 @@ jobs:
         uses: golangci/golangci-lint-action@v4
         with:
           version: v1.54
-          args: --config .golangci.yaml
+          args: --config .golangci.yml
 
   check_changes:
     runs-on: ubuntu-latest
