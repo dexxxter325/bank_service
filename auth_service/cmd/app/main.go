@@ -7,6 +7,7 @@ import (
 )
 
 func main() {
+	x := 10
 	logger := logrus.New()
 	logger.SetLevel(logrus.DebugLevel)
 	logger.SetFormatter(&logrus.JSONFormatter{})
