@@ -15,18 +15,19 @@ jobs:
         with:
           go-version: '1.21.4'
           cache: false
-      - name: golangci-lint for auth_service
-        uses: golangci/golangci-lint-action@v4
-        with:
-          version: v1.54
-          working-directory: auth_service
-          #args: --config .golangci.yml
       - name: golangci-lint for credit_service
         uses: golangci/golangci-lint-action@v4
         with:
           version: v1.54
           working-directory: credit_service
           #args: --config .golangci.yml
+      - name: golangci-lint for auth_service
+        uses: golangci/golangci-lint-action@v4
+        with:
+          version: v1.54
+          working-directory: auth_service
+          #args: --config .golangci.yml
+
 
   check_changes:
     needs: golangci
