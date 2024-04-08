@@ -3,16 +3,13 @@ package main
 import (
 	"bank/auth_service/internal/app"
 	"bank/auth_service/internal/config"
+	"fmt"
 	"github.com/sirupsen/logrus"
-	"os"
 )
 
 func main() {
-	file, err := os.Open("non_existent_file.txt") // Ошибка открытия файла не обрабатывается
-	defer file.Close()
-	if err != nil {
-		panic(err)
-	}
+	var MyVariable int
+	fmt.Println(MyVariable)
 	logger := logrus.New()
 	logger.SetLevel(logrus.DebugLevel)
 	logger.SetFormatter(&logrus.JSONFormatter{})
