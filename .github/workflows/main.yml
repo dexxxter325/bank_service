@@ -22,6 +22,7 @@ jobs:
         uses: golangci/golangci-lint-action@v4
         with:
           version: v1.54
+          working-directory: auth_service
           #args: --config .golangci.yml
 
   check_changes:
