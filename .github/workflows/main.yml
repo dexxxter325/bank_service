@@ -7,7 +7,7 @@ on:
 
 jobs:
   golangci_credit_service:
-    name: lint
+    name: lint_credit_service
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -23,7 +23,7 @@ jobs:
           #args: --config .golangci.yml
 
   golangci_auth_service:
-    name: lint
+    name: lint_auth_service
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -36,7 +36,7 @@ jobs:
         with:
           version: v1.54
           working-directory: auth_service
-          skip-pkg-cache: true
+          #skip-pkg-cache: true
           #args: --config .golangci.yml
 
 
