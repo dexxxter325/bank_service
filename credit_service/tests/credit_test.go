@@ -451,7 +451,12 @@ func TestUpdate_Fail(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			response, closeReq := getIdForReq(st, t, restPort)
-			defer closeReq()
+			defer func() {
+				err = closeReq()
+				if err != nil {
+					t.Errorf("failed to close request body: %v", err)
+				}
+			}()
 
 			updateReqData := Request{
 				Amount:             tt.amount,

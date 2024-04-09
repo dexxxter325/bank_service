@@ -45,7 +45,7 @@ func RunRest(cfg *config.Config, logger *logrus.Logger) {
 		Handler: handlers.InitRoutes(r),
 	}
 
-	stop := make(chan os.Signal)
+	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGTERM, syscall.SIGINT)
 
 	go func() {

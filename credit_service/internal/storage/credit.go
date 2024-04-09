@@ -202,9 +202,6 @@ func (d *AuthMongoDB) IsCreditExist(ctx context.Context, userID int64, amount, t
 
 	res := d.creditCollection.FindOne(ctx, query)
 
-	if errors.Is(res.Err(), mongo.ErrNoDocuments) {
-		return false
-	}
-
-	return true
+	//если ошибка будет mongo.ErrNoDocuments выведет !true=false.Если ошибка будет отличаться от mongo.ErrNoDocuments-выведет !false=true
+	return !errors.Is(res.Err(), mongo.ErrNoDocuments)
 }
