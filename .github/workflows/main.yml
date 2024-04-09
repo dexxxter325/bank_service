@@ -6,7 +6,7 @@ on:
       - main
 
 jobs:
-  golangci:
+  golangci_credit_service:
     name: lint
     runs-on: ubuntu-latest
     steps:
@@ -21,6 +21,16 @@ jobs:
           version: v1.54
           working-directory: credit_service
           #args: --config .golangci.yml
+
+  golangci_auth_service:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.21.4'
+          cache: false
       - name: golangci-lint for auth_service
         uses: golangci/golangci-lint-action@v4
         with:
@@ -31,7 +41,6 @@ jobs:
 
 
   check_changes:
-    needs: golangci
     runs-on: ubuntu-latest
     outputs:
       auth_service: ${{ steps.check_files.outputs.auth_service }}
